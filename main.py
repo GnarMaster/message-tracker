@@ -54,8 +54,9 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-@bot.command()
+@bot.command(help="이번 달 메시지 랭킹을 보여줍니다.")
 async def 이번달메시지(ctx):
+
     now = datetime.now()
     year, month = now.year, now.month
     results = []
