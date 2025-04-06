@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: discord-bot
+    env: python
+    buildCommand: ""
+    startCommand: "python main.py"
+    envVars:
+      - key: DISCORD_BOT_TOKEN
+        value: YOUR_TOKEN_HERE
