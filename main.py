@@ -121,7 +121,7 @@ start_dates = {
     "우재민": datetime(2025, 4, 15),
     "임현수": datetime(2025, 4, 14),
     "정재선": datetime(2025, 4, 12),
-    "김  혁": datetime(2025, 4, 13),
+    "김 혁": datetime(2025, 4, 13),
 }
 
 @bot.command(name='공익근무표')
