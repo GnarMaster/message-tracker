@@ -126,7 +126,7 @@ start_dates = {
 
 @bot.command(name='공익근무표')
 async def duty_chart(ctx):
-    today = datetime.now().date()
+    today = (datetime.utcnow() + timedelta(hours=9)).date()
     result = [f"[{today} 공익근무표]"]
 
     for name, start_date in start_dates.items():
