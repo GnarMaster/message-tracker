@@ -2,7 +2,6 @@ from keep_alive import keep_alive
 
 import discord
 from discord.ext import commands
-from discord import app_commands
 from datetime import datetime, timedelta
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import os
@@ -19,9 +18,8 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.messages = True
 
-# 봇과 명령어 트리 설정
+# 봇 설정
 bot = commands.Bot(command_prefix="!", intents=intents)
-tree = app_commands.CommandTree(bot)
 
 # 데이터 파일 경로
 DATA_FILE = "message_data.json"
@@ -42,11 +40,6 @@ message_log = load_data()
 @bot.event
 async def on_ready():
     print(f"✅ 봇 로그인 완료: {bot.user}")
-    try:
-        synced = await tree.sync()
-        print(f"📌 슬래시 명령어 {len(synced)}개 동기화 완료!")
-    except Exception as e:
-        print(f"❌ 슬래시 명령어 동기화 실패: {e}")
 
     # 매달 1일에 자동 랭킹 전송
     scheduler = AsyncIOScheduler()
@@ -65,8 +58,8 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-@tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 보여줍니다.")
-async def 이번달메시지(interaction: discord.Interaction):
+@bot.command(name="이번달메시지")
+async def 이번달메시지(ctx):
     now = datetime.now()
     year, month = now.year, now.month
     results = []
@@ -77,7 +70,7 @@ async def 이번달메시지(interaction: discord.Interaction):
             results.append((int(uid), count))
 
     if not results:
-        await interaction.response.send_message("이번 달에는 메시지가 없어요 😢")
+        await ctx.send("이번 달에는 메시지가 없어요 😢")
         return
 
     sorted_results = sorted(results, key=lambda x: -x[1])
@@ -86,7 +79,7 @@ async def 이번달메시지(interaction: discord.Interaction):
         user = await bot.fetch_user(uid)
         msg += f"{i}. {user.name} - {cnt}개\n"
 
-    await interaction.response.send_message(msg)
+    await ctx.send(msg)
 
 async def send_monthly_stats():
     now = datetime.now()
@@ -117,6 +110,45 @@ async def send_monthly_stats():
         if f"-{year}-{month}" in key:
             del message_log[key]
     save_data(message_log)
+
+# ✅ 공익근무표 기능 추가 부분
+
+# 주야비휴 순환 배열
+duty_cycle = ["주간", "야간", "비번", "휴무"]
+
+# 각 사람의 "주간" 시작일
+start_dates = {
+    "우재민": datetime(2025, 4, 15),
+    "임현수": datetime(2025, 4, 14),
+    "정재선": datetime(2025, 4, 12),
+    "김  혁": datetime(2025, 4, 13),
+}
+
+@bot.command(name='공익근무표')
+async def duty_chart(ctx):
+    today = datetime.now().date()
+    result = [f"[{today} 공익근무표]"]
+
+    for name, start_date in start_dates.items():
+        days_passed = (today - start_date.date()).days
+        duty = duty_cycle[days_passed % len(duty_cycle)]
+        result.append(f"{name} - {duty}")
+
+    await ctx.send("\n".join(result))
+
+@bot.command(name='공익')
+async def duty_for_person(ctx, *, name):
+    name = name.strip()
+    if name not in start_dates:
+        await ctx.send(f"{name}님의 근무 정보를 찾을 수 없습니다.")
+        return
+
+    today = datetime.now().date()
+    start_date = start_dates[name]
+    days_passed = (today - start_date.date()).days
+    duty = duty_cycle[days_passed % len(duty_cycle)]
+
+    await ctx.send(f"{name}님의 오늘 근무는 \"{duty}\"입니다.")
 
 # 웹서버 켜기
 keep_alive()
