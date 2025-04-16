@@ -2,3 +2,5 @@ discord.py
 Flask
 apscheduler
 python-dotenv
+gspread
+oauth2client
