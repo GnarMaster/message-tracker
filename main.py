@@ -44,7 +44,7 @@ async def on_ready():
 
     # 매달 1일에 자동 랭킹 전송
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=0, minute=0)
+    scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=15, minute=0)
     scheduler.start()
 
 @bot.event
