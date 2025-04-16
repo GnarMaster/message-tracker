@@ -9,7 +9,7 @@ import os
 from dotenv import load_dotenv
 import json
 
-# ✅ [추가] Google Sheets 연동용 모듈
+# ✅ Google Sheets 연동 모듈
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -23,10 +23,11 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.messages = True
 
-# 봇 설정
+# 봇 설정 및 CommandTree 생성 (슬래시 명령어용)
 bot = commands.Bot(command_prefix="!", intents=intents)
+tree = discord.app_commands.CommandTree(bot)
 
-# 데이터 파일 경로
+# 메시지 카운트 저장용 파일
 DATA_FILE = "message_data.json"
 
 def load_data():
@@ -39,10 +40,10 @@ def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f)
 
-# 데이터 불러오기
+# 메시지 로그 불러오기
 message_log = load_data()
 
-# ✅ [추가] Google Sheets 연동 함수
+# ✅ Google Sheets 연동 함수
 def get_sheet():
     scope = [
         "https://spreadsheets.google.com/feeds",
@@ -53,15 +54,18 @@ def get_sheet():
     client = gspread.authorize(creds)
     return client.open("Discord_Message_Log").sheet1
 
+# 봇 시작 시 실행되는 이벤트
 @bot.event
 async def on_ready():
     print(f"✅ 봇 로그인 완료: {bot.user}")
+    await tree.sync()  # 슬래시 명령어 동기화
 
-    # 매달 1일에 자동 랭킹 전송
+    # 매달 1일 15시에 랭킹 전송
     scheduler = AsyncIOScheduler()
     scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=15, minute=0)
     scheduler.start()
 
+# 유저 메시지 감지 → 카운트 + 구글 시트 반영
 @bot.event
 async def on_message(message):
     if message.author.bot:
@@ -78,7 +82,6 @@ async def on_message(message):
     username = message.author.name
 
     cell = sheet.find(user_id)
-
     if cell is not None:
         row = cell.row
         current_count = int(sheet.cell(row, 3).value)
@@ -88,8 +91,9 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-@bot.command(name="이번달메시지")
-async def 이번달메시지(ctx):
+# ✅ 슬래시 명령어: 이번 달 메시지 랭킹
+@tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 확인합니다.")
+async def 이번달메시지(interaction: discord.Interaction):
     now = datetime.now()
     year, month = now.year, now.month
     results = []
@@ -100,17 +104,18 @@ async def 이번달메시지(ctx):
             results.append((int(uid), count))
 
     if not results:
-        await ctx.send("이번 달에는 메시지가 없어요 😢")
+        await interaction.response.send_message("이번 달에는 메시지가 없어요 😢")
         return
 
     sorted_results = sorted(results, key=lambda x: -x[1])
     msg = f"📊 {year}년 {month}월 메시지 랭킹\n"
     for i, (uid, cnt) in enumerate(sorted_results, 1):
         user = await bot.fetch_user(uid)
-        msg += f"{i}. {user.name} - {cnt}개\n"
+        msg += f"{i}. {user.name} - {cnt}개\\n"
 
-    await ctx.send(msg)
+    await interaction.response.send_message(msg)
 
+# ✅ 매달 1일 자동 랭킹 전송 함수
 async def send_monthly_stats():
     now = datetime.now()
     last_month = now.replace(day=1) - timedelta(days=1)
@@ -126,45 +131,31 @@ async def send_monthly_stats():
         return
 
     sorted_results = sorted(results, key=lambda x: -x[1])
-    msg = f"📊 {year}년 {month}월 메시지 랭킹\n"
+    msg = f"📊 {year}년 {month}월 메시지 랭킹\\n"
 
-    top_user_id = None
     top_user_name = ""
 
     for i, (uid, cnt) in enumerate(sorted_results[:3], 1):
         user = await bot.fetch_user(uid)
-
-        medal = ""
+        medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉"
+        line = f"{i}. {medal} {user.mention} - {cnt}개\\n"
+        msg += line
         if i == 1:
-            medal = "🥇"
-            mention = f"<@{uid}>"
-            msg += f"{i}. {medal} {mention} - {cnt}개\n"
-            top_user_id = uid
             top_user_name = user.name
-        elif i == 2:
-            medal = "🥈"
-            msg += f"{i}. {medal} {user.name} - {cnt}개\n"
-        elif i == 3:
-            medal = "🥉"
-            msg += f"{i}. {medal} {user.name} - {cnt}개\n"
 
-    msg += f"\n🎉 {top_user_name}님, 이번 달 1등 축하드립니다!"
-
+    msg += f"\\n🎉 {top_user_name}님, 이번 달 1등 축하드립니다!"
     channel = bot.get_channel(CHANNEL_ID)
     if channel:
         await channel.send(msg)
 
+    # 지난달 데이터 삭제
     for key in list(message_log.keys()):
         if f"-{year}-{month}" in key:
             del message_log[key]
     save_data(message_log)
 
-# ✅ 공익근무표 기능 추가 부분
-
-# 주야비휴 순환 배열
+# ✅ 공익근무표 기능
 duty_cycle = ["주간", "야간", "비번", "휴무"]
-
-# 각 사람의 "주간" 시작일
 start_dates = {
     "우재민": datetime(2025, 4, 15),
     "임현수": datetime(2025, 4, 14),
@@ -172,8 +163,8 @@ start_dates = {
     "김 혁": datetime(2025, 4, 13),
 }
 
-@bot.command(name='공익근무표')
-async def duty_chart(ctx):
+@tree.command(name="공익근무표", description="오늘의 공익 근무표를 확인합니다.")
+async def duty_chart(interaction: discord.Interaction):
     today = (datetime.utcnow() + timedelta(hours=9)).date()
     result = [f"[{today} 공익근무표]"]
 
@@ -182,13 +173,13 @@ async def duty_chart(ctx):
         duty = duty_cycle[days_passed % len(duty_cycle)]
         result.append(f"{name} - {duty}")
 
-    await ctx.send("\n".join(result))
+    await interaction.response.send_message("\\n".join(result))
 
-@bot.command(name='공익')
-async def duty_for_person(ctx, *, name):
+@tree.command(name="공익", description="이름을 입력하면 해당 사람의 근무를 알려줍니다.")
+async def duty_for_person(interaction: discord.Interaction, name: str):
     name = name.strip()
     if name not in start_dates:
-        await ctx.send(f"{name}님의 근무 정보를 찾을 수 없습니다.")
+        await interaction.response.send_message(f"{name}님의 근무 정보를 찾을 수 없습니다.")
         return
 
     today = datetime.now().date()
@@ -196,11 +187,11 @@ async def duty_for_person(ctx, *, name):
     days_passed = (today - start_date.date()).days
     duty = duty_cycle[days_passed % len(duty_cycle)]
 
-    await ctx.send(f"{name}님의 오늘 근무는 \"{duty}\"입니다.")
+    await interaction.response.send_message(f"{name}님의 오늘 근무는 \\\"{duty}\\\"입니다.")
 
+# ✅ 점메추 기능 (슬래시)
 MENU_FILE = "menu_list.json"
 
-# 메뉴 리스트 불러오기
 def load_menu():
     if os.path.exists(MENU_FILE):
         with open(MENU_FILE, "r", encoding="utf-8") as f:
@@ -216,24 +207,21 @@ def save_menu(menu):
     with open(MENU_FILE, "w", encoding="utf-8") as f:
         json.dump(menu, f, ensure_ascii=False)
 
-# 점메추 명령어 수정
-@bot.command(name='점메추')
-async def lunch_recommendation(ctx):
+@tree.command(name="점메추", description="오늘의 점심 메뉴를 추천해줘요.")
+async def lunch_recommendation(interaction: discord.Interaction):
     menu_list = load_menu()
     choice = random.choice(menu_list)
-    await ctx.send(f"🥢 오늘의 점심 추천은... **{choice}**!")
+    await interaction.response.send_message(f"🥢 오늘의 점심 추천은... **{choice}**!")
 
-# 메뉴 추가 명령어
-@bot.command(name='메뉴추가')
-async def add_menu(ctx, *, menu_name):
+@tree.command(name="메뉴추가", description="점메추 메뉴에 새로운 항목을 추가합니다.")
+async def add_menu(interaction: discord.Interaction, menu_name: str):
     menu_list = load_menu()
     if menu_name in menu_list:
-        await ctx.send(f"❌ 이미 메뉴에 '{menu_name}'가 있어요!")
+        await interaction.response.send_message(f"❌ 이미 메뉴에 '{menu_name}'가 있어요!")
     else:
         menu_list.append(menu_name)
         save_menu(menu_list)
-        await ctx.send(f"✅ '{menu_name}' 메뉴가 추가됐어요!")
-
+        await interaction.response.send_message(f"✅ '{menu_name}' 메뉴가 추가됐어요!")
 
 # 웹서버 켜기
 keep_alive()
