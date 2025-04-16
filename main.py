@@ -25,7 +25,7 @@ intents.messages = True
 
 # 봇 설정 및 CommandTree 생성 (슬래시 명령어용)
 bot = commands.Bot(command_prefix="!", intents=intents)
-tree = discord.app_commands.CommandTree(bot)
+tree = bot.tree
 
 # 메시지 카운트 저장용 파일
 DATA_FILE = "message_data.json"
