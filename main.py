@@ -12,7 +12,6 @@ import json
 # ✅ [추가] Google Sheets 연동용 모듈
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from gspread.exceptions import CellNotFound
 
 # .env 변수 로드
 load_dotenv()
