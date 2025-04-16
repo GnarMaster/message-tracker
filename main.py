@@ -111,7 +111,7 @@ async def 이번달메시지(interaction: discord.Interaction):
     msg = f"📊 {year}년 {month}월 메시지 랭킹\n"
     for i, (uid, cnt) in enumerate(sorted_results, 1):
         user = await bot.fetch_user(uid)
-        msg += f"{i}. {user.name} - {cnt}개\\n"
+        msg += f"{i}. {user.name} - {cnt}개\n"
 
     await interaction.response.send_message(msg)
 
@@ -131,19 +131,19 @@ async def send_monthly_stats():
         return
 
     sorted_results = sorted(results, key=lambda x: -x[1])
-    msg = f"📊 {year}년 {month}월 메시지 랭킹\\n"
+    msg = f"📊 {year}년 {month}월 메시지 랭킹\n"
 
     top_user_name = ""
 
     for i, (uid, cnt) in enumerate(sorted_results[:3], 1):
         user = await bot.fetch_user(uid)
         medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉"
-        line = f"{i}. {medal} {user.mention} - {cnt}개\\n"
+        line = f"{i}. {medal} {user.mention} - {cnt}개\n"
         msg += line
         if i == 1:
             top_user_name = user.name
 
-    msg += f"\\n🎉 {top_user_name}님, 이번 달 1등 축하드립니다!"
+    msg += f"\n🎉 {top_user_name}님, 이번 달 1등 축하드립니다!"
     channel = bot.get_channel(CHANNEL_ID)
     if channel:
         await channel.send(msg)
@@ -173,7 +173,7 @@ async def duty_chart(interaction: discord.Interaction):
         duty = duty_cycle[days_passed % len(duty_cycle)]
         result.append(f"{name} - {duty}")
 
-    await interaction.response.send_message("\\n".join(result))
+    await interaction.response.send_message("\n".join(result))
 
 @tree.command(name="공익", description="이름을 입력하면 해당 사람의 근무를 알려줍니다.")
 async def duty_for_person(interaction: discord.Interaction, name: str):
