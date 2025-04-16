@@ -102,7 +102,7 @@ async def send_monthly_stats():
     top_user_id = None
     top_user_name = ""
 
-   for i, (uid, cnt) in enumerate(sorted_results[:3], 1):
+ for i, (uid, cnt) in enumerate(sorted_results[:3], 1):
     user = await bot.fetch_user(uid)
     
     medal = ""
