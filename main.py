@@ -80,9 +80,12 @@ async def on_message(message):
 
     try:
         cell = sheet.find(user_id)
-        row = cell.row
-        current_count = int(sheet.cell(row, 3).value)
-        sheet.update_cell(row, 3, current_count + 1)
+        if cell:
+            row = cell.row
+            current_count = int(sheet.cell(row, 3).value)
+            sheet.update_cell(row, 3, current_count + 1)
+        else:
+            raise CellNotFound()
     except CellNotFound:
         sheet.append_row([user_id, username, 1])
 
