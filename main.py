@@ -98,9 +98,29 @@ async def send_monthly_stats():
 
     sorted_results = sorted(results, key=lambda x: -x[1])
     msg = f"📊 {year}년 {month}월 메시지 랭킹\n"
-    for i, (uid, cnt) in enumerate(sorted_results, 1):
-        user = await bot.fetch_user(uid)
-        msg += f"{i}. {user.name} - {cnt}개\n"
+
+    top_user_id = None
+    top_user_name = ""
+
+   for i, (uid, cnt) in enumerate(sorted_results[:3], 1):
+    user = await bot.fetch_user(uid)
+    
+    medal = ""
+    if i == 1:
+        medal = "🥇"
+        mention = f"<@{uid}>"
+        msg += f"{i}. {medal} {mention} - {cnt}개\n"
+        top_user_id = uid
+        top_user_name = user.name
+    elif i == 2:
+        medal = "🥈"
+        msg += f"{i}. {medal} {user.name} - {cnt}개\n"
+    elif i == 3:
+        medal = "🥉"
+        msg += f"{i}. {medal} {user.name} - {cnt}개\n"
+
+
+    msg += f"\n🎉 {top_user_name}님, 이번 달 1등 축하드립니다!"
 
     channel = bot.get_channel(CHANNEL_ID)
     if channel:
@@ -111,6 +131,8 @@ async def send_monthly_stats():
         if f"-{year}-{month}" in key:
             del message_log[key]
     save_data(message_log)
+
+
 
 # ✅ 공익근무표 기능 추가 부분
 
