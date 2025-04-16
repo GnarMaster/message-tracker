@@ -9,6 +9,10 @@ import os
 from dotenv import load_dotenv
 import json
 
+# ✅ [추가] Google Sheets 연동용 모듈
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
 # .env 변수 로드
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
@@ -38,6 +42,17 @@ def save_data(data):
 # 데이터 불러오기
 message_log = load_data()
 
+# ✅ [추가] Google Sheets 연동 함수
+def get_sheet():
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    creds_dict = json.loads(os.getenv("GOOGLE_CREDS"))
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+    return client.open("Discord_Message_Log").sheet1
+
 @bot.event
 async def on_ready():
     print(f"✅ 봇 로그인 완료: {bot.user}")
@@ -56,6 +71,19 @@ async def on_message(message):
     key = f"{message.author.id}-{now.year}-{now.month}"
     message_log[key] = message_log.get(key, 0) + 1
     save_data(message_log)
+
+    # ✅ [추가] 유저 누적 메시지 수를 Google Sheets에 저장
+    sheet = get_sheet()
+    user_id = str(message.author.id)
+    username = message.author.name
+
+    try:
+        cell = sheet.find(user_id)
+        row = cell.row
+        current_count = int(sheet.cell(row, 3).value)
+        sheet.update_cell(row, 3, current_count + 1)
+    except gspread.exceptions.CellNotFound:
+        sheet.append_row([user_id, username, 1])
 
     await bot.process_commands(message)
 
@@ -102,25 +130,22 @@ async def send_monthly_stats():
     top_user_id = None
     top_user_name = ""
 
+    for i, (uid, cnt) in enumerate(sorted_results[:3], 1):
+        user = await bot.fetch_user(uid)
 
-for i, (uid, cnt) in enumerate(sorted_results[:3], 1):
-    user = await bot.fetch_user(uid)
-    
-    medal = ""
-    if i == 1:
-        medal = "🥇"
-        mention = f"<@{uid}>"
-        msg += f"{i}. {medal} {mention} - {cnt}개\n"
-        top_user_id = uid
-        top_user_name = user.name
-    elif i == 2:
-        medal = "🥈"
-        msg += f"{i}. {medal} {user.name} - {cnt}개\n"
-    elif i == 3:
-        medal = "🥉"
-        msg += f"{i}. {medal} {user.name} - {cnt}개\n"
-
-
+        medal = ""
+        if i == 1:
+            medal = "🥇"
+            mention = f"<@{uid}>"
+            msg += f"{i}. {medal} {mention} - {cnt}개\n"
+            top_user_id = uid
+            top_user_name = user.name
+        elif i == 2:
+            medal = "🥈"
+            msg += f"{i}. {medal} {user.name} - {cnt}개\n"
+        elif i == 3:
+            medal = "🥉"
+            msg += f"{i}. {medal} {user.name} - {cnt}개\n"
 
     msg += f"\n🎉 {top_user_name}님, 이번 달 1등 축하드립니다!"
 
@@ -128,13 +153,10 @@ for i, (uid, cnt) in enumerate(sorted_results[:3], 1):
     if channel:
         await channel.send(msg)
 
-    # 지난달 데이터 삭제
     for key in list(message_log.keys()):
         if f"-{year}-{month}" in key:
             del message_log[key]
     save_data(message_log)
-
-
 
 # ✅ 공익근무표 기능 추가 부분
 
@@ -174,7 +196,7 @@ async def duty_for_person(ctx, *, name):
     duty = duty_cycle[days_passed % len(duty_cycle)]
 
     await ctx.send(f"{name}님의 오늘 근무는 \"{duty}\"입니다.")
-    
+
 @bot.command(name='점메추')
 async def lunch_recommendation(ctx):
     menu_list = [
@@ -183,6 +205,7 @@ async def lunch_recommendation(ctx):
     ]
     choice = random.choice(menu_list)
     await ctx.send(f"🥢 오늘의 점심 추천은... **{choice}**!")
+
 # 웹서버 켜기
 keep_alive()
 
