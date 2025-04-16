@@ -72,23 +72,21 @@ async def on_message(message):
     message_log[key] = message_log.get(key, 0) + 1
     save_data(message_log)
 
-# ✅ [추가] 유저 누적 메시지 수를 Google Sheets에 저장
-sheet = get_sheet()
-user_id = str(message.author.id)
-username = message.author.name
+    # ✅ Google Sheets 저장
+    sheet = get_sheet()
+    user_id = str(message.author.id)
+    username = message.author.name
 
-# ✅ [수정] 예외 없이 CellNotFound 대체 처리
-cell = sheet.find(user_id)
+    cell = sheet.find(user_id)
 
-if cell is not None:
-    row = cell.row
-    current_count = int(sheet.cell(row, 3).value)
-    sheet.update_cell(row, 3, current_count + 1)
-else:
-    sheet.append_row([user_id, username, 1])
+    if cell is not None:
+        row = cell.row
+        current_count = int(sheet.cell(row, 3).value)
+        sheet.update_cell(row, 3, current_count + 1)
+    else:
+        sheet.append_row([user_id, username, 1])
 
-await bot.process_commands(message)
-
+    await bot.process_commands(message)
 
 @bot.command(name="이번달메시지")
 async def 이번달메시지(ctx):
