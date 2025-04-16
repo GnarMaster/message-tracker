@@ -1,6 +1,7 @@
 from keep_alive import keep_alive
 
 import discord
+import random
 from discord.ext import commands
 from datetime import datetime, timedelta
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
