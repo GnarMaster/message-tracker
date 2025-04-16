@@ -12,6 +12,7 @@ import json
 # ✅ [추가] Google Sheets 연동용 모듈
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from gspread.exceptions import CellNotFound
 
 # .env 변수 로드
 load_dotenv()
@@ -82,7 +83,7 @@ async def on_message(message):
         row = cell.row
         current_count = int(sheet.cell(row, 3).value)
         sheet.update_cell(row, 3, current_count + 1)
-    except gspread.exceptions.CellNotFound:
+    except CellNotFound:
         sheet.append_row([user_id, username, 1])
 
     await bot.process_commands(message)
