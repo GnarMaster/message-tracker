@@ -112,31 +112,44 @@ async def on_message(message):
 # ✅ 슬래시 명령어: 이번 달 메시지 랭킹
 @tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 확인합니다.")
 async def 이번달메시지(interaction: discord.Interaction):
-    await interaction.response.defer()  # 응답 예약
+    try:
+        await interaction.response.defer()  # ✅ 응답 먼저 확보
 
-    sheet = get_sheet()
-    records = sheet.get_all_records()  # ✅ 시트 실시간 조회
-    now = datetime.now()
-    year, month = now.year, now.month
+        sheet = get_sheet()
+        records = sheet.get_all_records()
 
-    results = []
-    for row in records:
-        uid = str(row["유저 ID"])
-        count = int(row["누적메시지수"])
-        key = f"{uid}-{year}-{month}"
-        results.append((int(uid), count))
+        now = datetime.now()
+        year, month = now.year, now.month
 
-    if not results:
-        await interaction.followup.send("이번 달에는 메시지가 없어요 😢")
-        return
+        results = []
+        for row in records:
+            uid = str(row.get("유저 ID", "0"))
+            count = int(row.get("누적메시지수", 0))  # ✅ 키 없을 경우 0 처리
+            results.append((int(uid), count))
 
-    sorted_results = sorted(results, key=lambda x: -x[1])
-    msg = f"📊 {year}년 {month}월 메시지 랭킹\n"
-    for i, (uid, cnt) in enumerate(sorted_results, 1):
-        user = await bot.fetch_user(uid)
-        msg += f"{i}. {user.name} - {cnt}개\n"
+        if not results:
+            await interaction.followup.send("이번 달에는 메시지가 없어요 😢")
+            return
 
-    await interaction.followup.send(msg)
+        sorted_results = sorted(results, key=lambda x: -x[1])
+        msg = f"📊 {year}년 {month}월 메시지 랭킹\n"
+        for i, (uid, cnt) in enumerate(sorted_results, 1):
+            try:
+                user = await bot.fetch_user(uid)
+                username = user.name
+            except:
+                username = f"(ID:{uid})"
+            msg += f"{i}. {username} - {cnt}개\n"
+
+        await interaction.followup.send(msg)
+
+    except Exception as e:
+        print("❗ /이번달메시지 에러:", e)
+        try:
+            await interaction.followup.send("⚠️ 메시지 랭킹 중 오류가 발생했습니다.")
+        except:
+            pass
+
 
 # ✅ 매달 1일 자동 랭킹 전송 + 초기화
 async def send_monthly_stats():
