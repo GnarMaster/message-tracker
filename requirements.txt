@@ -4,3 +4,5 @@ apscheduler
 python-dotenv
 gspread
 oauth2client
+requests
+beautifulsoup4
