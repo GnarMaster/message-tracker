@@ -94,6 +94,8 @@ async def on_message(message):
 # ✅ 슬래시 명령어: 이번 달 메시지 랭킹
 @tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 확인합니다.")
 async def 이번달메시지(interaction: discord.Interaction):
+    await interaction.response.defer()  # ✅ 먼저 응답을 예약해서 타임아웃 방지
+
     now = datetime.now()
     year, month = now.year, now.month
     results = []
@@ -104,7 +106,7 @@ async def 이번달메시지(interaction: discord.Interaction):
             results.append((int(uid), count))
 
     if not results:
-        await interaction.response.send_message("이번 달에는 메시지가 없어요 😢")
+        await interaction.followup.send("이번 달에는 메시지가 없어요 😢")
         return
 
     sorted_results = sorted(results, key=lambda x: -x[1])
@@ -113,7 +115,8 @@ async def 이번달메시지(interaction: discord.Interaction):
         user = await bot.fetch_user(uid)
         msg += f"{i}. {user.name} - {cnt}개\n"
 
-    await interaction.response.send_message(msg)
+    await interaction.followup.send(msg)  # ✅ defer 이후엔 followup으로 응답해야 함
+
 
 # ✅ 매달 1일 자동 랭킹 전송 함수
 async def send_monthly_stats():
