@@ -180,17 +180,15 @@ async def 이번달메시지(interaction: discord.Interaction):
             msg += f"{i}. {username} - {cnt}개\n"
 
         await interaction.followup.send(msg)
-        
-except Exception as e:
-    import traceback
-    print("❗ /이번달메시지 에러 발생:")
-    traceback.print_exc()
-    try:
-        await interaction.followup.send("⚠️ 오류가 발생했습니다.")
-    except:
-        pass
 
-
+    except Exception as e:
+        import traceback
+        print("❗ /이번달메시지 에러 발생:")
+        traceback.print_exc()
+        try:
+            await interaction.followup.send("⚠️ 오류가 발생했습니다.")
+        except:
+            pass
 
 # ✅ 매달 1일 자동 랭킹 전송 + 초기화
 async def send_monthly_stats():
