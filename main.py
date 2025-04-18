@@ -136,24 +136,17 @@ async def 이번달메시지(interaction: discord.Interaction):
         results = []
 
         for row in records:
-            print("🔍 row:", row)
-
-            # UID 추출 및 정수 변환 (float → int 포함)
             uid_raw = row.get("유저 ID", "0")
-            print("➡️ UID (raw):", uid_raw)
-
             try:
                 uid = int(float(uid_raw))
             except Exception as e:
                 print(f"❌ UID 변환 실패: {uid_raw} -> {e}")
                 continue
 
-            # 누적메시지수 추출 (키 디버깅 포함)
+            # 누적메시지수 추출
             count = 0
             for k in row:
-                print(f"🧪 KEY: '{k}' -> VALUE: '{row[k]}'")
-                if k.strip() == "누적메시지수":
-                    print(f"✅ 발견된 누적메시지수 키: '{k}' / 값: '{row[k]}'")
+                if k.strip().replace("세", "시") == "누적메시지수":  # '메세지수' 오타 대응
                     try:
                         count = int(str(row[k]).strip())
                     except Exception as e:
@@ -161,22 +154,19 @@ async def 이번달메시지(interaction: discord.Interaction):
                         count = 0
                     break
 
-            print(f"✅ 최종 uid: {uid}, count: {count}")
-            results.append((uid, count))
+            # 닉네임도 함께 저장
+            username = row.get("닉네임", f"(ID:{uid})")
+            results.append((uid, count, username))
 
         if not results:
             await interaction.followup.send("이번 달에는 메시지가 없어요 😢")
             return
 
+        # 정렬 및 출력
         sorted_results = sorted(results, key=lambda x: -x[1])
         msg = f"📊 {year}년 {month}월 메시지 랭킹\n"
 
-        for i, (uid, cnt) in enumerate(sorted_results, 1):
-            try:
-                user = await bot.fetch_user(uid)
-                username = user.name
-            except:
-                username = f"(ID:{uid})"
+        for i, (uid, cnt, username) in enumerate(sorted_results, 1):
             msg += f"{i}. {username} - {cnt}개\n"
 
         await interaction.followup.send(msg)
@@ -189,6 +179,7 @@ async def 이번달메시지(interaction: discord.Interaction):
             await interaction.followup.send("⚠️ 오류가 발생했습니다.")
         except:
             pass
+
 
 # ✅ 매달 1일 자동 랭킹 전송 + 초기화
 async def send_monthly_stats():
