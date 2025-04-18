@@ -41,18 +41,30 @@ def get_sheet():
 # ✅ 시트에서 message_log 복원
 def reload_message_log_from_sheet():
     sheet = get_sheet()
-    records = sheet.get_all_records()  # user_id, 닉네임, 누적메시지수
+    records = sheet.get_all_records()
 
     now = datetime.now()
     year, month = now.year, now.month
     new_log = {}
 
     for row in records:
-        uid = row["유저 ID"]
-        count = row["누적메시지수"]
+        uid = str(row.get("유저 ID", "0"))
+
+        # 키 안전하게 추출
+        count = 0
+        for k in row:
+            if k.strip() == "누적메시지수":
+                try:
+                    count = int(row[k])
+                except:
+                    count = 0
+                break
+
         key = f"{uid}-{year}-{month}"
         new_log[key] = count
+
     return new_log
+
 
 # ✅ message_log 파일 I/O (로컬 캐시)
 DATA_FILE = "message_data.json"
