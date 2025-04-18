@@ -183,41 +183,61 @@ async def 이번달메시지(interaction: discord.Interaction):
 
 # ✅ 매달 1일 자동 랭킹 전송 + 초기화
 async def send_monthly_stats():
+    sheet = get_sheet()
+    records = sheet.get_all_records()
+
     now = datetime.now()
     last_month = now.replace(day=1) - timedelta(days=1)
     year, month = last_month.year, last_month.month
+
     results = []
 
-    for key, count in message_log.items():
-        uid, y, m = key.split("-")
-        if int(y) == year and int(m) == month:
-            results.append((int(uid), count))
+    for row in records:
+        uid_raw = row.get("유저 ID", "0")
+        try:
+            uid = int(float(uid_raw))
+        except Exception as e:
+            print(f"❌ UID 변환 실패: {uid_raw} -> {e}")
+            continue
+
+        # 누적 메시지 수 추출
+        count = 0
+        for k in row:
+            if k.strip().replace("세", "시") == "누적메시지수":
+                try:
+                    count = int(str(row[k]).strip())
+                except:
+                    count = 0
+                break
+
+        username = row.get("닉네임", f"(ID:{uid})")
+        results.append((uid, count, username))
 
     if not results:
+        print("❗ 전송할 메시지 랭킹 데이터 없음")
         return
 
     sorted_results = sorted(results, key=lambda x: -x[1])
     msg = f"📊 {year}년 {month}월 메시지 랭킹\n"
-    top_user_name = ""
 
-    for i, (uid, cnt) in enumerate(sorted_results[:3], 1):
-        user = await bot.fetch_user(uid)
-        medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉"
-        line = f"{i}. {medal} {user.mention} - {cnt}개\n"
-        msg += line
-        if i == 1:
-            top_user_name = user.name
+    medals = ["🥇", "🥈", "🥉"]
+    for i, (uid, count, username) in enumerate(sorted_results[:3]):
+        msg += f"{i+1}. {medals[i]} {username} - {count}개\n"
 
-    msg += f"\n🎉 {top_user_name}님, 이번 달 1등 축하드립니다!"
+    if sorted_results:
+        top_name = sorted_results[0][2]
+        msg += f"\n🎉 {top_name}님, 이번 달 1등 축하드립니다!"
+
     channel = bot.get_channel(CHANNEL_ID)
     if channel:
         await channel.send(msg)
 
-    # 지난달 데이터 삭제
+    # ✅ 지난달 message_log 초기화 (json 캐시만)
     for key in list(message_log.keys()):
         if f"-{year}-{month}" in key:
             del message_log[key]
     save_data(message_log)
+
 
 # ✅ 공익근무표 명령어
 duty_cycle = ["주간", "야간", "비번", "휴무"]
