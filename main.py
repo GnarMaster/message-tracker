@@ -134,27 +134,37 @@ async def 이번달메시지(interaction: discord.Interaction):
         year, month = now.year, now.month
 
         results = []
-        for row in records:
-            uid = str(row.get("유저 ID", "0"))
 
-            # 안전한 누적메시지수 추출
+        for row in records:
+            # ✅ 유저 ID 안전하게 float → int 변환
+            uid_raw = row.get("유저 ID", "0")
+            try:
+                uid = int(float(uid_raw))  # Google Sheets에서 float로 인식된 경우도 처리
+            except Exception as e:
+                print(f"❗ UID 변환 실패: {uid_raw} -> {e}")
+                continue
+
+            # ✅ 누적메시지수 추출 (공백 제거 + 예외 방지)
             count = 0
             for k in row:
                 if k.strip() == "누적메시지수":
                     try:
-                        count = int(row[k])
-                    except:
+                        count = int(str(row[k]).strip())
+                    except Exception as e:
+                        print(f"⚠️ 누적메시지수 변환 실패: {row[k]} -> {e}")
                         count = 0
                     break
 
-            results.append((int(uid), count))
+            results.append((uid, count))
 
         if not results:
             await interaction.followup.send("이번 달에는 메시지가 없어요 😢")
             return
 
+        # ✅ 랭킹 정렬 및 출력
         sorted_results = sorted(results, key=lambda x: -x[1])
         msg = f"📊 {year}년 {month}월 메시지 랭킹\n"
+
         for i, (uid, cnt) in enumerate(sorted_results, 1):
             try:
                 user = await bot.fetch_user(uid)
@@ -166,13 +176,14 @@ async def 이번달메시지(interaction: discord.Interaction):
         await interaction.followup.send(msg)
 
     except Exception as e:
-    import traceback
-    print("❗ /이번달메시지 에러 발생:")
-    traceback.print_exc()  # 전체 에러 스택 출력
-    try:
-        await interaction.followup.send("⚠️ 오류가 발생했습니다.")
-    except:
-        pass
+        import traceback
+        print("❗ /이번달메시지 에러 발생:")
+        traceback.print_exc()
+        try:
+            await interaction.followup.send("⚠️ 오류가 발생했습니다.")
+        except:
+            pass
+
 
 
 # ✅ 매달 1일 자동 랭킹 전송 + 초기화
