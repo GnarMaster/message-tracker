@@ -113,7 +113,7 @@ async def on_message(message):
 @tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 확인합니다.")
 async def 이번달메시지(interaction: discord.Interaction):
     try:
-        await interaction.response.defer()  # ✅ 응답 먼저 확보
+        await interaction.response.defer()
 
         sheet = get_sheet()
         records = sheet.get_all_records()
@@ -124,7 +124,17 @@ async def 이번달메시지(interaction: discord.Interaction):
         results = []
         for row in records:
             uid = str(row.get("유저 ID", "0"))
-            count = int(row.get("누적메시지수", 0))  # ✅ 키 없을 경우 0 처리
+
+            # 안전한 누적메시지수 추출
+            count = 0
+            for k in row:
+                if k.strip() == "누적메시지수":
+                    try:
+                        count = int(row[k])
+                    except:
+                        count = 0
+                    break
+
             results.append((int(uid), count))
 
         if not results:
@@ -144,12 +154,11 @@ async def 이번달메시지(interaction: discord.Interaction):
         await interaction.followup.send(msg)
 
     except Exception as e:
-        print("❗ /이번달메시지 에러:", e)
+        print(f"❗ 오류: {e}")
         try:
-            await interaction.followup.send("⚠️ 메시지 랭킹 중 오류가 발생했습니다.")
+            await interaction.followup.send("⚠️ 오류가 발생했습니다.")
         except:
             pass
-
 
 # ✅ 매달 1일 자동 랭킹 전송 + 초기화
 async def send_monthly_stats():
