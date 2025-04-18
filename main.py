@@ -112,16 +112,19 @@ async def on_message(message):
 # ✅ 슬래시 명령어: 이번 달 메시지 랭킹
 @tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 확인합니다.")
 async def 이번달메시지(interaction: discord.Interaction):
-    await interaction.response.defer()
+    await interaction.response.defer()  # 응답 예약
 
+    sheet = get_sheet()
+    records = sheet.get_all_records()  # ✅ 시트 실시간 조회
     now = datetime.now()
     year, month = now.year, now.month
-    results = []
 
-    for key, count in message_log.items():
-        uid, y, m = key.split("-")
-        if int(y) == year and int(m) == month:
-            results.append((int(uid), count))
+    results = []
+    for row in records:
+        uid = str(row["유저 ID"])
+        count = int(row["누적메시지수"])
+        key = f"{uid}-{year}-{month}"
+        results.append((int(uid), count))
 
     if not results:
         await interaction.followup.send("이번 달에는 메시지가 없어요 😢")
