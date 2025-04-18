@@ -27,7 +27,34 @@ intents.messages = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
-# 메시지 카운트 저장용 파일
+# ✅ Google Sheets 연동 함수
+def get_sheet():
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    creds_dict = json.loads(os.getenv("GOOGLE_CREDS"))
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+    return client.open("Discord_Message_Log").sheet1
+
+# ✅ 시트에서 message_log 복원
+def reload_message_log_from_sheet():
+    sheet = get_sheet()
+    records = sheet.get_all_records()  # user_id, 닉네임, 누적메시지수
+
+    now = datetime.now()
+    year, month = now.year, now.month
+    new_log = {}
+
+    for row in records:
+        uid = row["유저 ID"]
+        count = row["누적메시지수"]
+        key = f"{uid}-{year}-{month}"
+        new_log[key] = count
+    return new_log
+
+# ✅ message_log 파일 I/O (로컬 캐시)
 DATA_FILE = "message_data.json"
 
 def load_data():
@@ -40,27 +67,18 @@ def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f)
 
-# 메시지 로그 불러오기
-message_log = load_data()
-
-# ✅ Google Sheets 연동 함수
-def get_sheet():
-    scope = [
-        "https://spreadsheets.google.com/feeds",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    creds_dict = json.loads(os.getenv("GOOGLE_CREDS"))
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    client = gspread.authorize(creds)
-    return client.open("Discord_Message_Log").sheet1
+# ✅ 전역 메시지 로그 변수 (초기값은 비워두고 on_ready에서 세팅)
+message_log = {}
 
 # 봇 시작 시 실행되는 이벤트
 @bot.event
 async def on_ready():
-    print(f"✅ 봇 로그인 완료: {bot.user}")
-    await tree.sync()  # 슬래시 명령어 동기화
+    global message_log
+    message_log = reload_message_log_from_sheet()  # ✅ 시트에서 복구
 
-    # 매달 1일 15시에 랭킹 전송
+    print(f"✅ 봇 로그인 완료: {bot.user}")
+    await tree.sync()
+
     scheduler = AsyncIOScheduler()
     scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=15, minute=0)
     scheduler.start()
@@ -94,7 +112,7 @@ async def on_message(message):
 # ✅ 슬래시 명령어: 이번 달 메시지 랭킹
 @tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 확인합니다.")
 async def 이번달메시지(interaction: discord.Interaction):
-    await interaction.response.defer()  # ✅ 먼저 응답을 예약해서 타임아웃 방지
+    await interaction.response.defer()
 
     now = datetime.now()
     year, month = now.year, now.month
@@ -115,10 +133,9 @@ async def 이번달메시지(interaction: discord.Interaction):
         user = await bot.fetch_user(uid)
         msg += f"{i}. {user.name} - {cnt}개\n"
 
-    await interaction.followup.send(msg)  # ✅ defer 이후엔 followup으로 응답해야 함
+    await interaction.followup.send(msg)
 
-
-# ✅ 매달 1일 자동 랭킹 전송 함수
+# ✅ 매달 1일 자동 랭킹 전송 + 초기화
 async def send_monthly_stats():
     now = datetime.now()
     last_month = now.replace(day=1) - timedelta(days=1)
@@ -135,7 +152,6 @@ async def send_monthly_stats():
 
     sorted_results = sorted(results, key=lambda x: -x[1])
     msg = f"📊 {year}년 {month}월 메시지 랭킹\n"
-
     top_user_name = ""
 
     for i, (uid, cnt) in enumerate(sorted_results[:3], 1):
@@ -157,7 +173,7 @@ async def send_monthly_stats():
             del message_log[key]
     save_data(message_log)
 
-# ✅ 공익근무표 기능
+# ✅ 공익근무표 명령어
 duty_cycle = ["주간", "야간", "비번", "휴무"]
 start_dates = {
     "우재민": datetime(2025, 4, 15),
@@ -190,9 +206,9 @@ async def duty_for_person(interaction: discord.Interaction, name: str):
     days_passed = (today - start_date.date()).days
     duty = duty_cycle[days_passed % len(duty_cycle)]
 
-    await interaction.response.send_message(f"{name}님의 오늘 근무는 \\\"{duty}\\\"입니다.")
+    await interaction.response.send_message(f"{name}님의 오늘 근무는 \"{duty}\"입니다.")
 
-# ✅ 점메추 기능 (슬래시)
+# ✅ 점메추 기능
 MENU_FILE = "menu_list.json"
 
 def load_menu():
@@ -226,8 +242,8 @@ async def add_menu(interaction: discord.Interaction, menu_name: str):
         save_menu(menu_list)
         await interaction.response.send_message(f"✅ '{menu_name}' 메뉴가 추가됐어요!")
 
-# 웹서버 켜기
+# ✅ Flask 웹서버 실행 (Render용)
 keep_alive()
 
-# 봇 실행
+# ✅ 봇 실행
 bot.run(TOKEN)
