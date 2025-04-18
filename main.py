@@ -9,6 +9,10 @@ import os
 from dotenv import load_dotenv
 import json
 
+import requests
+from bs4 import BeautifulSoup
+from discord import app_commands
+
 # ✅ Google Sheets 연동 모듈
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -307,6 +311,46 @@ async def add_menu(interaction: discord.Interaction, menu_name: str):
         menu_list.append(menu_name)
         save_menu(menu_list)
         await interaction.response.send_message(f"✅ '{menu_name}' 메뉴가 추가됐어요!")
+        
+# ⭐ 네이버 별자리 운세 크롤링 함수
+def get_naver_fortune(zodiac: str) -> str:
+    url = "https://search.naver.com/search.naver"
+    params = {
+        "where": "nexearch",
+        "sm": "top_hty",
+        "fbm": "0",
+        "ie": "utf8",
+        "query": "네이버 별자리 운세"
+    }
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    response = requests.get(url, params=params, headers=headers)
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    # 운세 카드 요소 탐색
+    boxes = soup.select("div[class^=Z8A3Z]")
+    for box in boxes:
+        title_tag = box.select_one("strong")
+        desc_tag = box.select_one("p")
+        if title_tag and desc_tag:
+            title = title_tag.text.strip()
+            if zodiac in title:
+                return desc_tag.text.strip()
+
+    return "❌ 해당 별자리의 운세를 찾을 수 없어요."
+
+# ✅ /별자리 슬래시 명령어 등록
+@tree.command(name="별자리", description="입력한 별자리의 오늘 운세를 알려줍니다.")
+async def zodiac_fortune(interaction: discord.Interaction, 별자리: str):
+    별자리 = 별자리.strip()
+    await interaction.response.defer()
+
+    fortune = get_naver_fortune(별자리)
+    await interaction.followup.send(f"🔮 **{별자리}**의 오늘의 운세\n\n{fortune}")
+
+
 
 # ✅ Flask 웹서버 실행 (Render용)
 keep_alive()
