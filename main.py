@@ -321,6 +321,22 @@ async def remove_menu(interaction: discord.Interaction, menu_name: str):
         menu_list.remove(menu_name)
         save_menu(menu_list)
         await interaction.response.send_message(f"🗑️ '{menu_name}' 메뉴가 삭제됐어요.")
+        
+@tree.command(name="메뉴판", description="현재 등록된 점메추 메뉴를 보여줍니다.")
+async def show_menu(interaction: discord.Interaction):
+    menu_list = load_menu()
+    if not menu_list:
+        await interaction.response.send_message("📭 등록된 메뉴가 없어요!")
+        return
+
+    # 너무 길 경우 나눠서 전송
+    chunk_size = 10
+    chunks = [menu_list[i:i + chunk_size] for i in range(0, len(menu_list), chunk_size)]
+
+    for i, chunk in enumerate(chunks, 1):
+        formatted = "\n".join(f"- {item}" for item in chunk)
+        title = f"📋 점메추 메뉴판 ({len(menu_list)}개 중 {i}/{len(chunks)})"
+        await interaction.response.send_message(f"{title}\n\n{formatted}")
 
 
 # ⭐ 네이버 별자리 운세 크롤링 함수
