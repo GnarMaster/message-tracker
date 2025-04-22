@@ -302,6 +302,12 @@ async def lunch_recommendation(interaction: discord.Interaction):
     choice = random.choice(menu_list)
     await interaction.response.send_message(f"🥢 오늘의 점심 추천은... **{choice}**!")
 
+@tree.command(name="저메추", description="오늘의 점심 메뉴를 추천해줘요. (점메추와 동일)")
+async def lunch_recommendation_alias(interaction: discord.Interaction):
+    menu_list = load_menu()
+    choice = random.choice(menu_list)
+    await interaction.response.send_message(f"🥢 오늘의 점심 추천은... **{choice}**!")
+
 @tree.command(name="메뉴추가", description="점메추 메뉴에 새로운 항목을 추가합니다.")
 async def add_menu(interaction: discord.Interaction, menu_name: str):
     menu_list = load_menu()
