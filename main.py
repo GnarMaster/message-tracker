@@ -335,14 +335,16 @@ async def show_menu(interaction: discord.Interaction):
         await interaction.response.send_message("📭 등록된 메뉴가 없어요!")
         return
 
-    # 너무 길 경우 나눠서 전송
-    chunk_size = 10
-    chunks = [menu_list[i:i + chunk_size] for i in range(0, len(menu_list), chunk_size)]
+    # 메뉴 전체를 한 번에 출력
+    formatted = "\n".join(f"- {item}" for item in menu_list)
+    message = f"📋 점메추 메뉴판 ({len(menu_list)}개)\n\n{formatted}"
 
-    for i, chunk in enumerate(chunks, 1):
-        formatted = "\n".join(f"- {item}" for item in chunk)
-        title = f"📋 점메추 메뉴판 ({len(menu_list)}개 중 {i}/{len(chunks)})"
-        await interaction.response.send_message(f"{title}\n\n{formatted}")
+    # 디스코드 메시지 길이 제한 대응
+    if len(message) > 1900:
+        await interaction.response.send_message("⚠️ 메뉴가 너무 많아서 한 번에 보여줄 수 없어요.")
+    else:
+        await interaction.response.send_message(message)
+
 
 
 # ⭐ 네이버 별자리 운세 크롤링 함수
