@@ -311,7 +311,18 @@ async def add_menu(interaction: discord.Interaction, menu_name: str):
         menu_list.append(menu_name)
         save_menu(menu_list)
         await interaction.response.send_message(f"✅ '{menu_name}' 메뉴가 추가됐어요!")
-        
+
+@tree.command(name="메뉴삭제", description="점메추 메뉴에서 항목을 삭제합니다.")
+async def remove_menu(interaction: discord.Interaction, menu_name: str):
+    menu_list = load_menu()
+    if menu_name not in menu_list:
+        await interaction.response.send_message(f"❌ '{menu_name}' 메뉴는 목록에 없어요!")
+    else:
+        menu_list.remove(menu_name)
+        save_menu(menu_list)
+        await interaction.response.send_message(f"🗑️ '{menu_name}' 메뉴가 삭제됐어요.")
+
+
 # ⭐ 네이버 별자리 운세 크롤링 함수
 def get_naver_fortune(zodiac: str) -> str:
     url = "https://search.naver.com/search.naver"
