@@ -383,26 +383,22 @@ async def zodiac_fortune(interaction: discord.Interaction, 별자리: str):
     별자리 = 별자리.strip()
 
     try:
-        await interaction.response.defer(thinking=True)
+        # interaction 유효성 먼저 확인하고 바로 응답 시도
+        await interaction.response.send_message("🔍 운세를 불러오는 중입니다...")
 
         fortune = get_nate_fortune(별자리)
 
-        # 응답이 느려도 문제없이 처리되게 followup 사용
+        # 이후 followup 메시지로 진짜 운세 출력
         await interaction.followup.send(f"🔮 **{별자리}**의 오늘의 운세\n\n{fortune}")
 
-    except discord.NotFound:
-        print("❗ Discord interaction expired (timeout). Cannot send message.")
+    except discord.errors.NotFound:
+        print("❗ 디스코드 Interaction이 이미 만료되어 응답할 수 없음")
     except Exception as e:
-        print(f"❗ 에러 발생: {e}")
+        print(f"❗ 기타 오류: {e}")
         try:
             await interaction.followup.send("⚠️ 운세를 불러오는 중 오류가 발생했어요.")
         except:
             pass
-
-
-
-
-
 
 # ✅ Flask 웹서버 실행 (Render용)
 keep_alive()
