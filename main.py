@@ -349,7 +349,6 @@ async def show_menu(interaction: discord.Interaction):
 
 # ⭐ 네이트 별자리 운세 크롤링 함수
 def get_nate_fortune(zodiac: str) -> str:
-    # 1. 별자리 맵핑 (입력 이름 → 내부 순서)
     zodiac_map = {
         "양자리": 0, "황소자리": 1, "쌍둥이자리": 2, "게자리": 3,
         "사자자리": 4, "처녀자리": 5, "천칭자리": 6, "전갈자리": 7,
@@ -360,13 +359,14 @@ def get_nate_fortune(zodiac: str) -> str:
         return "❌ 지원하지 않는 별자리입니다. 예: 양자리, 사자자리 등"
 
     try:
+        # 🔄 iframe 내부 HTML 직접 요청
         url = "https://fortune.nate.com/contents/freeunse/freeunse.nate?freeUnseId=today04"
         response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
         soup = BeautifulSoup(response.text, "html.parser")
 
         items = soup.select("div.constList > ul > li")
-
         idx = zodiac_map[zodiac]
+
         if idx >= len(items):
             return "❌ 운세 정보를 찾을 수 없습니다."
 
@@ -375,17 +375,18 @@ def get_nate_fortune(zodiac: str) -> str:
 
     except Exception as e:
         return f"⚠️ 운세 정보를 가져오는 중 오류 발생: {e}"
-
    
 
-# ✅ /별자리 슬래시 명령어 등록
+# ✅ 슬래시 명령어: /별자리
 @tree.command(name="별자리", description="입력한 별자리의 오늘 운세를 알려줍니다.")
 async def zodiac_fortune(interaction: discord.Interaction, 별자리: str):
     별자리 = 별자리.strip()
-    await interaction.response.defer()
-
     fortune = get_nate_fortune(별자리)
-    await interaction.followup.send(f"🔮 **{별자리}**의 오늘의 운세\n\n{fortune}")
+
+    try:
+        await interaction.response.send_message(f"🔮 **{별자리}**의 오늘의 운세\n\n{fortune}")
+    except discord.errors.NotFound:
+        print("❗ 응답 시간이 초과되어 Interaction이 만료되었습니다.")
 
 
 
