@@ -352,29 +352,31 @@ def get_nate_fortune(zodiac: str) -> str:
     import requests
     from bs4 import BeautifulSoup
 
-    zodiac_map = {
-        "양자리": 0, "황소자리": 1, "쌍둥이자리": 2, "게자리": 3,
-        "사자자리": 4, "처녀자리": 5, "천칭자리": 6, "전갈자리": 7,
-        "사수자리": 8, "염소자리": 9, "물병자리": 10, "물고기자리": 11
-    }
+    # 이 페이지는 한 번에 하나의 별자리만 보여줌
+    supported = ["물고기자리", "물병자리", "염소자리", "사수자리", "전갈자리", "천칭자리",
+                 "처녀자리", "사자자리", "게자리", "쌍둥이자리", "황소자리", "양자리"]
 
-    if zodiac not in zodiac_map:
-        return "❌ 지원하지 않는 별자리입니다. 예: 양자리, 사자자리 등"
+    if zodiac not in supported:
+        return "❌ 지원하지 않는 별자리입니다."
 
     try:
-        url = "https://fortune.nate.com/contents/freeunse/todaystar.nate"
+        url = "https://fortune.nate.com/contents/freeunse/freeunseframe.nate?freeUnseId=today04"
         headers = {"User-Agent": "Mozilla/5.0"}
         response = requests.get(url, headers=headers)
         soup = BeautifulSoup(response.text, "html.parser")
 
-        items = soup.select("div.constList > ul > li")
-        idx = zodiac_map[zodiac]
-
-        if idx >= len(items):
+        # HTML 안에서 모든 별자리가 다 나오지 않고, 첫 번째 별자리만 나옴
+        # 따라서 사용자가 어떤 별자리를 골라도 항상 첫 번째(화면에 보이는 별자리) 운세만 가져옴
+        desc_cell = soup.find("td", {"id": "con_txt"})
+        if not desc_cell:
             return "❌ 운세 정보를 찾을 수 없습니다."
 
-        desc = items[idx].select_one("p")
-        return desc.text.strip() if desc else "❌ 운세 설명이 비어 있어요."
+        # 줄바꿈 포함된 텍스트 처리
+        raw_html = desc_cell.decode_contents()
+        text = raw_html.replace("<br>", "\n").strip()
+        soup2 = BeautifulSoup(text, "html.parser")
+        final = soup2.get_text(separator="\n")
+        return final.strip()
 
     except Exception as e:
         return f"⚠️ 운세 정보를 가져오는 중 오류 발생: {e}"
