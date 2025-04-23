@@ -360,7 +360,7 @@ def get_nate_fortune(zodiac: str) -> str:
         return "❌ 지원하지 않는 별자리입니다. 예: 양자리, 사자자리 등"
 
     try:
-        url = "https://fortune.nate.com/contents/freeunse/freeunseframe.nate?freeUnseId=today04"
+        url = "https://fortune.nate.com/contents/freeunse/freeunse.nate?freeUnseId=today04"
         response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
         soup = BeautifulSoup(response.text, "html.parser")
 
