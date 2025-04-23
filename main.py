@@ -380,15 +380,25 @@ def get_nate_fortune(zodiac: str) -> str:
 # ✅ 슬래시 명령어: /별자리
 @tree.command(name="별자리", description="입력한 별자리의 오늘 운세를 알려줍니다.")
 async def zodiac_fortune(interaction: discord.Interaction, 별자리: str):
-    await interaction.response.defer(thinking=True)  # ⏳ "생각 중..." 표시
-
     별자리 = 별자리.strip()
-    fortune = get_nate_fortune(별자리)
 
     try:
+        await interaction.response.defer(thinking=True)
+
+        fortune = get_nate_fortune(별자리)
+
+        # 응답이 느려도 문제없이 처리되게 followup 사용
         await interaction.followup.send(f"🔮 **{별자리}**의 오늘의 운세\n\n{fortune}")
+
+    except discord.NotFound:
+        print("❗ Discord interaction expired (timeout). Cannot send message.")
     except Exception as e:
-        print(f"❗ 응답 중 오류: {e}")
+        print(f"❗ 에러 발생: {e}")
+        try:
+            await interaction.followup.send("⚠️ 운세를 불러오는 중 오류가 발생했어요.")
+        except:
+            pass
+
 
 
 
