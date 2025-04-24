@@ -346,65 +346,6 @@ async def show_menu(interaction: discord.Interaction):
         await interaction.response.send_message(message)
 
 
-
-# ⭐ 네이트 별자리 운세 크롤링 함수
-def get_nate_fortune(zodiac: str) -> str:
-    import requests
-    from bs4 import BeautifulSoup
-
-    # 이 페이지는 한 번에 하나의 별자리만 보여줌
-    supported = ["물고기자리", "물병자리", "염소자리", "사수자리", "전갈자리", "천칭자리",
-                 "처녀자리", "사자자리", "게자리", "쌍둥이자리", "황소자리", "양자리"]
-
-    if zodiac not in supported:
-        return "❌ 지원하지 않는 별자리입니다."
-
-    try:
-        url = "https://fortune.nate.com/contents/freeunse/freeunseframe.nate?freeUnseId=today04"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        # HTML 안에서 모든 별자리가 다 나오지 않고, 첫 번째 별자리만 나옴
-        # 따라서 사용자가 어떤 별자리를 골라도 항상 첫 번째(화면에 보이는 별자리) 운세만 가져옴
-        desc_cell = soup.find("td", {"id": "con_txt"})
-        if not desc_cell:
-            return "❌ 운세 정보를 찾을 수 없습니다."
-
-        # 줄바꿈 포함된 텍스트 처리
-        raw_html = desc_cell.decode_contents()
-        text = raw_html.replace("<br>", "\n").strip()
-        soup2 = BeautifulSoup(text, "html.parser")
-        final = soup2.get_text(separator="\n")
-        return final.strip()
-
-    except Exception as e:
-        return f"⚠️ 운세 정보를 가져오는 중 오류 발생: {e}"
-
-
-# ✅ 슬래시 명령어: /별자리
-@tree.command(name="별자리", description="입력한 별자리의 오늘 운세를 알려줍니다.")
-async def zodiac_fortune(interaction: discord.Interaction, 별자리: str):
-    별자리 = 별자리.strip()
-
-    try:
-        # interaction 유효성 먼저 확인하고 바로 응답 시도
-        await interaction.response.send_message("🔍 운세를 불러오는 중입니다...")
-
-        fortune = get_nate_fortune(별자리)
-
-        # 이후 followup 메시지로 진짜 운세 출력
-        await interaction.followup.send(f"🔮 **{별자리}**의 오늘의 운세\n\n{fortune}")
-
-    except discord.errors.NotFound:
-        print("❗ 디스코드 Interaction이 이미 만료되어 응답할 수 없음")
-    except Exception as e:
-        print(f"❗ 기타 오류: {e}")
-        try:
-            await interaction.followup.send("⚠️ 운세를 불러오는 중 오류가 발생했어요.")
-        except:
-            pass
-
 # ✅ Flask 웹서버 실행 (Render용)
 keep_alive()
 
