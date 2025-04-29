@@ -110,7 +110,7 @@ async def 이번달메시지(interaction: discord.Interaction):
     await interaction.response.defer()
 
     try:
-        await save_message_log_to_sheet()  # ✅ 강제 저장
+        await save_message_log_to_sheet()  # ✅ 캐시 먼저 저장
 
         sheet = get_sheet()
         records = sheet.get_all_records()
@@ -118,6 +118,7 @@ async def 이번달메시지(interaction: discord.Interaction):
         now = datetime.now()
         year, month = now.year, now.month
 
+        # ✅ 유저 ID → 닉네임 맵핑
         id_to_name = {}
         for row in records:
             uid_raw = str(row.get("유저 ID", "0")).strip()
