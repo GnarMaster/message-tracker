@@ -302,6 +302,12 @@ async def lunch_recommendation(interaction: discord.Interaction):
     choice = random.choice(menu_list)
     await interaction.response.send_message(f"🥢 오늘의 점심 추천은... **{choice}**!")
 
+@tree.command(name="저메추", description="오늘의 저녁 메뉴를 추천해줘요. (점메추와 동일)")
+async def lunch_recommendation_alias(interaction: discord.Interaction):
+    menu_list = load_menu()
+    choice = random.choice(menu_list)
+    await interaction.response.send_message(f"🥢 오늘의 저녁 추천은... **{choice}**!")
+
 @tree.command(name="메뉴추가", description="점메추 메뉴에 새로운 항목을 추가합니다.")
 async def add_menu(interaction: discord.Interaction, menu_name: str):
     menu_list = load_menu()
@@ -311,7 +317,35 @@ async def add_menu(interaction: discord.Interaction, menu_name: str):
         menu_list.append(menu_name)
         save_menu(menu_list)
         await interaction.response.send_message(f"✅ '{menu_name}' 메뉴가 추가됐어요!")
+
+@tree.command(name="메뉴삭제", description="점메추 메뉴에서 항목을 삭제합니다.")
+async def remove_menu(interaction: discord.Interaction, menu_name: str):
+    menu_list = load_menu()
+    if menu_name not in menu_list:
+        await interaction.response.send_message(f"❌ '{menu_name}' 메뉴는 목록에 없어요!")
+    else:
+        menu_list.remove(menu_name)
+        save_menu(menu_list)
+        await interaction.response.send_message(f"🗑️ '{menu_name}' 메뉴가 삭제됐어요.")
         
+@tree.command(name="메뉴판", description="현재 등록된 점메추 메뉴를 보여줍니다.")
+async def show_menu(interaction: discord.Interaction):
+    menu_list = load_menu()
+    if not menu_list:
+        await interaction.response.send_message("📭 등록된 메뉴가 없어요!")
+        return
+
+    # 메뉴 전체를 한 번에 출력
+    formatted = "\n".join(f"- {item}" for item in menu_list)
+    message = f"📋 점메추 메뉴판 ({len(menu_list)}개)\n\n{formatted}"
+
+    # 디스코드 메시지 길이 제한 대응
+    if len(message) > 1900:
+        await interaction.response.send_message("⚠️ 메뉴가 너무 많아서 한 번에 보여줄 수 없어요.")
+    else:
+        await interaction.response.send_message(message)
+
+
 
 
 # ✅ Flask 웹서버 실행 (Render용)
