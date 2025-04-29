@@ -58,7 +58,6 @@ async def on_ready():
 
     scheduler = AsyncIOScheduler()
     scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=15, minute=0)  # 매달 1일 15시
-    scheduler.add_job(lambda: bot.loop.create_task(sync_cache_to_sheet()), 'interval', minutes=5)  # 🔥 5분마다
     scheduler.start()
 
 # ✅ 채팅 감지
@@ -71,7 +70,33 @@ async def on_message(message):
     key = f"{message.author.id}-{now.year}-{now.month}"
     message_log[key] = message_log.get(key, 0) + 1
     save_data(message_log)
+    try:
+        sheet = get_sheet()
+        records = sheet.get_all_records()
+        existing_data = {}
 
+        for idx, row in enumerate(records, start=2):
+            user_id = str(row.get("유저 ID", "")).strip()
+            try:
+                count = int(str(row.get("누적메시지수", 0)).strip())
+            except:
+                count = 0
+            if user_id:
+                existing_data[user_id] = (idx, count)
+
+        user_id_str = str(message.author.id)
+
+        if user_id_str in existing_data:
+            row_num, current_count = existing_data[user_id_str]
+            new_total = current_count + 1  # 새로 1개 추가
+            sheet.update_cell(row_num, 3, new_total)
+        else:
+            user = message.author
+            sheet.append_row([user_id_str, user.name, 1])
+
+    except Exception as e:
+        print(f"❗ on_message 업데이트 에러: {e}")
+        
     await bot.process_commands(message)
 
 # ✅ 캐시를 구글시트에 합산 저장
@@ -117,8 +142,6 @@ async def sync_cache_to_sheet():
 async def 이번달메시지(interaction: discord.Interaction):
     try:
         await interaction.response.defer()
-
-        await sync_cache_to_sheet()  # ✅ 캐시 먼저 업로드!
 
         sheet = get_sheet()
         records = sheet.get_all_records()
