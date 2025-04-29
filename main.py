@@ -97,6 +97,8 @@ async def on_ready():
 
     scheduler = AsyncIOScheduler()
     scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=15, minute=0)
+
+    scheduler.add_job(send_birthday_congrats, 'cron', hour=15, minute=0) 
     scheduler.start()
 
 # 유저 메시지 감지 → 카운트 + 구글 시트 반영
@@ -127,6 +129,7 @@ async def on_message(message):
 
 # ✅ 슬래시 명령어: 이번 달 메시지 랭킹
 @tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 확인합니다.")
+@tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 확인합니다.")
 async def 이번달메시지(interaction: discord.Interaction):
     try:
         await interaction.response.defer()
@@ -150,7 +153,7 @@ async def 이번달메시지(interaction: discord.Interaction):
             # 누적메시지수 추출
             count = 0
             for k in row:
-                if k.strip().replace("세", "시") == "누적메시지수":  # '메세지수' 오타 대응
+                if k.strip().replace("세", "시") == "누적메시지수":
                     try:
                         count = int(str(row[k]).strip())
                     except Exception as e:
@@ -158,9 +161,7 @@ async def 이번달메시지(interaction: discord.Interaction):
                         count = 0
                     break
 
-            # 닉네임도 함께 저장
-            username = row.get("닉네임", f"(ID:{uid})")
-            results.append((uid, count, username))
+            results.append((uid, count))
 
         if not results:
             await interaction.followup.send("이번 달에는 메시지가 없어요 😢")
@@ -170,7 +171,14 @@ async def 이번달메시지(interaction: discord.Interaction):
         sorted_results = sorted(results, key=lambda x: -x[1])
         msg = f"📊 {year}년 {month}월 메시지 랭킹\n"
 
-        for i, (uid, cnt, username) in enumerate(sorted_results, 1):
+        for i, (uid, cnt) in enumerate(sorted_results, 1):
+            # 서버별 닉네임 가져오기
+            member = interaction.guild.get_member(uid)
+            if member:
+                username = member.display_name  # 서버 닉네임
+            else:
+                username = f"(ID:{uid})"  # 멤버 못 찾으면 그냥 ID 표시
+
             msg += f"{i}. {username} - {cnt}개\n"
 
         await interaction.followup.send(msg)
@@ -183,6 +191,7 @@ async def 이번달메시지(interaction: discord.Interaction):
             await interaction.followup.send("⚠️ 오류가 발생했습니다.")
         except:
             pass
+
 
 
 # ✅ 매달 1일 자동 랭킹 전송 + 초기화
@@ -344,6 +353,100 @@ async def show_menu(interaction: discord.Interaction):
         await interaction.response.send_message("⚠️ 메뉴가 너무 많아서 한 번에 보여줄 수 없어요.")
     else:
         await interaction.response.send_message(message)
+
+# ✅ 생일 저장/조회 함수
+def get_birthday_sheet():
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    creds_dict = json.loads(os.getenv("GOOGLE_CREDS"))
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+    return client.open("Discord_Message_Log").worksheet("Dictionary_Birth_SAVE")  # 'birthdays' 탭 이름 주의
+
+def find_birthday(user_id):
+    sheet = get_birthday_sheet()
+    try:
+        cell = sheet.find(str(user_id))
+        if cell:
+            row = sheet.row_values(cell.row)
+            return row
+    except:
+        return None
+    return None
+
+def save_birthday(user_id, username, birthday):
+    sheet = get_birthday_sheet()
+    try:
+        cell = sheet.find(str(user_id))
+        if cell:
+            # 이미 존재하면 업데이트
+            sheet.update_cell(cell.row, 2, username)
+            sheet.update_cell(cell.row, 3, birthday)
+        else:
+            # 없으면 새로 추가
+            sheet.append_row([str(user_id), username, birthday])
+    except Exception as e:
+        print(f"❗ 생일 저장 중 에러 발생: {e}")
+
+# ✅ 슬래시 명령어: 본인 생일 등록
+@tree.command(name="생일등록", description="본인 생일을 등록합니다. (형식: MM-DD)")
+async def register_birthday(interaction: discord.Interaction, birthday: str):
+    await interaction.response.defer()
+    try:
+        datetime.strptime(birthday, "%m-%d")
+    except ValueError:
+        await interaction.followup.send("⚠️ 생일은 MM-DD 형식으로 입력해주세요! 예: 05-03")
+        return
+
+    save_birthday(interaction.user.id, interaction.user.name, birthday)
+    await interaction.followup.send(f"✅ {interaction.user.name}님의 생일을 {birthday}로 등록했습니다!")
+
+# ✅ 슬래시 명령어: 관리자용 남 생일 등록
+@tree.command(name="생일등록_대신", description="다른 사람의 생일을 대신 등록합니다. (관리자 전용)")
+@app_commands.checks.has_permissions(administrator=True)
+async def register_birthday_for(interaction: discord.Interaction, member: discord.Member, birthday: str):
+    await interaction.response.defer()
+    try:
+        datetime.strptime(birthday, "%m-%d")
+    except ValueError:
+        await interaction.followup.send("⚠️ 생일은 MM-DD 형식으로 입력해주세요! 예: 05-03")
+        return
+
+    save_birthday(member.id, member.name, birthday)
+    await interaction.followup.send(f"✅ {member.name}님의 생일을 {birthday}로 등록했습니다!")
+
+# ✅ 관리자 권한 오류 처리
+@register_birthday_for.error
+async def register_birthday_for_error(interaction: discord.Interaction, error):
+    if isinstance(error, app_commands.errors.MissingPermissions):
+        await interaction.response.send_message("⚠️ 이 명령어는 관리자만 사용할 수 있어요.", ephemeral=True)
+        
+# ✅ 생일자 축하 함수
+async def send_birthday_congrats():
+    sheet = get_birthday_sheet()
+    records = sheet.get_all_records()
+
+    today = datetime.now().strftime("%m-%d")
+
+    channel = bot.get_channel(CHANNEL_ID)
+    if not channel:
+        print("❗ 축하 보낼 채널을 찾을 수 없습니다.")
+        return
+
+    for row in records:
+        user_id = str(row.get("유저 ID", ""))
+        birthday = row.get("생일", "")
+
+        if birthday == today:
+            try:
+                user = await bot.fetch_user(int(user_id))
+                if user:
+                    await channel.send(f"🎉 오늘은 <@{user.id}> 님의 생일입니다! 모두 축하해 주세요! 🎂🎉")
+            except Exception as e:
+                print(f"❗ 생일 축하 중 오류 발생: {e}")
+
 
 
 # ✅ Flask 웹서버 실행 (Render용)
