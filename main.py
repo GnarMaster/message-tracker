@@ -106,6 +106,9 @@ async def sync_cache_to_sheet():
                 user = await bot.fetch_user(int(user_id))
                 sheet.append_row([user_id, user.name, value])
 
+            del message_log[key]
+
+        save_data(message_log)
     except Exception as e:
         print(f"❗ sync_cache_to_sheet 에러: {e}")
 
