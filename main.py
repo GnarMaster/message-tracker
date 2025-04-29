@@ -345,59 +345,6 @@ async def show_menu(interaction: discord.Interaction):
     else:
         await interaction.response.send_message(message)
 
-async def update_sheet_with_nicknames():
-    sheet = get_sheet()
-    records = sheet.get_all_records()
-    now = datetime.now()
-    year, month = now.year, now.month
-
-    existing_uids = {str(row.get("유저 ID", "")).strip() for row in records}
-
-    for key, value in message_log.items():
-        user_id, y, m = key.split('-')
-        if int(y) != year or int(m) != month:
-            continue  # 이번 달 데이터만 처리
-
-        try:
-            user_id_int = int(user_id)
-        except:
-            continue
-
-        # 시트에 이미 존재하면 업데이트
-        if user_id in existing_uids:
-            try:
-                cell = sheet.find(user_id)
-                row = cell.row
-                # 누적메시지수 업데이트
-                sheet.update_cell(row, 3, value)
-
-                # 닉네임이 비어있으면 채워넣기
-                nickname_cell = sheet.cell(row, 2)
-                if not nickname_cell.value.strip():
-                    user = await bot.fetch_user(user_id_int)
-                    sheet.update_cell(row, 2, user.name)
-
-            except Exception as e:
-                print(f"❗ 업데이트 중 오류: {e}")
-
-        else:
-            # 새로 추가
-            try:
-                user = await bot.fetch_user(user_id_int)
-                sheet.append_row([user_id, user.name, value])
-                print(f"✅ {user.name} 추가 완료")
-            except Exception as e:
-                print(f"❗ 추가 중 오류: {e}")
-
-    print("✅ 구글 시트 업데이트 완료")
-
-@tree.command(name="닉네임정리", description="구글 시트에 닉네임 자동 정리 및 누락된 유저 추가")
-async def 닉네임정리(interaction: discord.Interaction):
-    await interaction.response.send_message("닉네임 정리 중입니다. 잠시만 기다려주세요...", ephemeral=True)
-    await update_sheet_with_nicknames()
-    await interaction.followup.send("✅ 구글 시트 닉네임 정리 완료!")
-
-
 # ✅ Flask 웹서버 실행 (Render용)
 keep_alive()
 
