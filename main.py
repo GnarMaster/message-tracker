@@ -1,40 +1,57 @@
-# ✅ 주요 모듈
 from keep_alive import keep_alive
+
 import discord
 import random
+import asyncio
 from discord.ext import commands
-from discord import app_commands
 from datetime import datetime, timedelta
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import os
 from dotenv import load_dotenv
 import json
+
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from discord import app_commands
 
-# ✅ .env 불러오기
+# ✅ .env 로드
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 
 # ✅ 인텐트 설정
 intents = discord.Intents.default()
-intents.messages = True
 intents.message_content = True
+intents.messages = True
 intents.guilds = True
-intents.members = True  # ✅ 서버 닉네임 가져오기 위해 꼭 필요
+intents.members = True
+
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
-# ✅ Google Sheets
+# ✅ Google Sheets 연동 함수
 def get_sheet():
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
     creds_dict = json.loads(os.getenv("GOOGLE_CREDS"))
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
     return client.open("Discord_Message_Log").sheet1
 
-# ✅ message_data.json 캐시
+# ✅ 생일 시트
+def get_birthday_sheet():
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    creds_dict = json.loads(os.getenv("GOOGLE_CREDS"))
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+    return client.open("Discord_Message_Log").worksheet("Dictionary_Birth_SAVE")
+
+# ✅ 캐시 파일
 DATA_FILE = "message_data.json"
 
 def load_data():
@@ -47,6 +64,7 @@ def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f)
 
+# ✅ 전역 변수
 message_log = {}
 
 # ✅ on_ready
@@ -58,10 +76,16 @@ async def on_ready():
     await tree.sync()
 
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=15, minute=0)  # 매달 1일 15시
+    scheduler.add_job(save_data_periodically, 'interval', minutes=5)  # 5분마다 저장
+    scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=15, minute=0)  # 매달 1일
+    scheduler.add_job(send_birthday_congrats, 'cron', hour=15, minute=0)  # 매일 15시
     scheduler.start()
 
-# ✅ on_message: 캐시만 업데이트
+# ✅ 5분마다 캐시 저장
+async def save_data_periodically():
+    save_data(message_log)
+
+# ✅ on_message
 @bot.event
 async def on_message(message):
     if message.author.bot:
@@ -70,62 +94,67 @@ async def on_message(message):
     now = datetime.now()
     key = f"{message.author.id}-{now.year}-{now.month}"
     message_log[key] = message_log.get(key, 0) + 1
-    save_data(message_log)
 
     await bot.process_commands(message)
 
-# ✅ /이번달메시지
+# ✅ 이번달메시지
 @tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 확인합니다.")
 async def 이번달메시지(interaction: discord.Interaction):
-    try:
-        await interaction.response.defer()
+    await interaction.response.defer()
 
-        # ✅ 캐시 데이터를 구글 시트로 업로드
+    try:
+        # 1. 캐시 저장 후
+        save_data(message_log)
+
+        # 2. 구글시트 업데이트
         sheet = get_sheet()
+        sheet.clear()
+        sheet.append_row(["유저 ID", "닉네임", "누적메시지수"])
+
+        for key, count in message_log.items():
+            user_id, year, month = key.split("-")
+            sheet.append_row([user_id, "Unknown", count])
+
+        # 3. 다시 불러오기
         records = sheet.get_all_records()
         now = datetime.now()
         year, month = now.year, now.month
 
-        # 캐시 반영
-        for key, value in message_log.items():
-            uid, y, m = key.split('-')
-            if int(y) == year and int(m) == month:
-                try:
-                    cell = sheet.find(uid)
-                    if cell:
-                        row = cell.row
-                        sheet.update_cell(row, 3, value)
-                except:
-                    continue
-
-        records = sheet.get_all_records()  # 다시 불러오기
-
-        # ✅ 랭킹 정리
         results = []
         for row in records:
             uid_raw = str(row.get("유저 ID", "0")).strip()
-            nickname = row.get("닉네임", "(Unknown)").strip()
+            nickname = str(row.get("닉네임", "(Unknown)")).strip()
             try:
                 uid = int(float(uid_raw))
-            except:
+            except Exception:
                 continue
-
             count = int(row.get("누적메시지수", 0))
-            results.append((uid, count, nickname))
+            results.append((uid, nickname, count))
 
-        sorted_results = sorted(results, key=lambda x: -x[1])
-
-        if not sorted_results:
+        if not results:
             await interaction.followup.send("이번 달에는 메시지가 없어요 😢")
             return
 
-        medals = ["🥇", "🥈", "🥉"]
-        msg = f"📊 {year}년 {month}월 메시지 랭킹 (TOP 3)\n\n"
+        sorted_results = sorted(results, key=lambda x: -x[2])
+        msg = f"📊 {year}년 {month}월 메시지 랭킹\n"
 
-        for i, (uid, count, nickname) in enumerate(sorted_results[:3]):
+        for i, (uid, nickname, cnt) in enumerate(sorted_results, 1):
             member = interaction.guild.get_member(uid)
-            username = member.display_name if member else nickname
-            msg += f"{medals[i]} {username} - {count}개\n"
+            if member:
+                display_name = member.display_name
+            else:
+                display_name = nickname
+
+            if i == 1:
+                medal = "🥇 "
+            elif i == 2:
+                medal = "🥈 "
+            elif i == 3:
+                medal = "🥉 "
+            else:
+                medal = ""
+
+            msg += f"{i}. {medal}{display_name} - {cnt}개\n"
 
         await interaction.followup.send(msg)
 
@@ -133,13 +162,17 @@ async def 이번달메시지(interaction: discord.Interaction):
         import traceback
         print("❗ /이번달메시지 에러 발생:")
         traceback.print_exc()
-        await interaction.followup.send("⚠️ 오류가 발생했습니다.")
+        try:
+            await interaction.followup.send("⚠️ 오류가 발생했습니다.")
+        except:
+            pass
 
-# ✅ send_monthly_stats: 1일에 자동으로 축하
+# ✅ 매달 1일 1등 축하
 async def send_monthly_stats():
     try:
         sheet = get_sheet()
         records = sheet.get_all_records()
+
         now = datetime.now()
         last_month = now.replace(day=1) - timedelta(days=1)
         year, month = last_month.year, last_month.month
@@ -147,51 +180,51 @@ async def send_monthly_stats():
         results = []
         for row in records:
             uid_raw = str(row.get("유저 ID", "0")).strip()
-            nickname = row.get("닉네임", "(Unknown)").strip()
+            nickname = str(row.get("닉네임", "(Unknown)")).strip()
             try:
                 uid = int(float(uid_raw))
-            except:
+            except Exception:
                 continue
-
             count = int(row.get("누적메시지수", 0))
-            results.append((uid, count, nickname))
+            results.append((uid, nickname, count))
 
-        sorted_results = sorted(results, key=lambda x: -x[1])
-
-        channel = bot.get_channel(CHANNEL_ID)
-        if not channel:
-            print("❗ 채널을 찾을 수 없습니다.")
+        if not results:
             return
 
-        medals = ["🥇", "🥈", "🥉"]
-        msg = f"📊 {year}년 {month}월 메시지 랭킹 (TOP 3)\n\n"
+        sorted_results = sorted(results, key=lambda x: -x[2])
 
-        top_mentions = []
-        for i, (uid, count, nickname) in enumerate(sorted_results[:3]):
-            member = channel.guild.get_member(uid)
-            username = member.display_name if member else nickname
-            mention = member.mention if member else f"<@{uid}>"
-
-            msg += f"{medals[i]} {username} - {count}개\n"
-            top_mentions.append(mention)
-
-        if top_mentions:
-            msg += f"\n🎉 이번 달 1등은 {top_mentions[0]} 님입니다! 모두 축하해 주세요! 🎂🎉"
-
-        await channel.send(msg)
-
-        # ✅ 지난달 데이터 초기화
-        for key in list(message_log.keys()):
-            if f"-{year}-{month}" in key:
-                del message_log[key]
-        save_data(message_log)
+        channel = bot.get_channel(CHANNEL_ID)
+        if channel and sorted_results:
+            winner_id = sorted_results[0][0]
+            await channel.send(f"🎉 지난달 1등 <@{winner_id}> 님 축하합니다! 🏆")
 
     except Exception as e:
         import traceback
-        print("❗ send_monthly_stats 에러 발생:")
+        print("❗ send_monthly_stats 에러:")
         traceback.print_exc()
 
-# ✅ 웹서버 시작 (Render용)
+# ✅ 생일 축하
+async def send_birthday_congrats():
+    sheet = get_birthday_sheet()
+    records = sheet.get_all_records()
+
+    today = datetime.now().strftime("%m-%d")
+    channel = bot.get_channel(CHANNEL_ID)
+    if not channel:
+        return
+
+    for row in records:
+        user_id = str(row.get("유저 ID", "")).strip()
+        birthday = str(row.get("생일", "")).strip()
+        if birthday == today:
+            try:
+                user = await bot.fetch_user(int(user_id))
+                if user:
+                    await channel.send(f"🎉 오늘은 <@{user.id}> 님의 생일입니다! 모두 축하해 주세요! 🎂🎉")
+            except:
+                continue
+
+# ✅ Flask keep_alive
 keep_alive()
 
 # ✅ 봇 실행
