@@ -247,24 +247,12 @@ async def duty_for_person(interaction: discord.Interaction, name: str):
     await interaction.response.send_message(f"{name}님의 오늘 근무는 \"{duty}\"입니다.")
 
 # ✅ 점메추 기능
-MENU_FILE = "menu_list.json"
 
 def load_menu():
-    if os.path.exists(MENU_FILE):
-        with open(MENU_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return [
-        "김치찌개", "돈까스", "제육볶음", "칼국수", "국밥", "떡볶이",
-        "맥도날드", "롯데리아", "KFC", "버거킹", "맘스터치",
-        "편의점도시락", "이삭토스트", "치즈돈까스", "부리또", "짜글이",
-        "햄부기", "냉면", "라멘", "치킨", "샐러드", "비빔밥", "초밥",
-        "중국집", "쌀국수", "서브웨이", "찜닭", "카레", "치킨마요",
-        "우동", "육개장", "삼계탕", "마라탕", "라면", "피자", "파스타"
-    ]
-
-def save_menu(menu):
-    with open(MENU_FILE, "w", encoding="utf-8") as f:
-        json.dump(menu, f, ensure_ascii=False)
+    sheet = get_sheet()
+    menu_sheet = sheet.spreadsheet.worksheet("Menu_List")
+    menus = menu_sheet.col_values(1)[1:]  # 첫 번째 열에서 헤더 빼고 메뉴만
+    return menus
 
 @tree.command(name="점메추", description="오늘의 점심 메뉴를 추천해줘요.")
 async def 점메추(interaction: discord.Interaction):
@@ -278,38 +266,77 @@ async def 저메추(interaction: discord.Interaction):
     choice = random.choice(menu_list)
     await interaction.response.send_message(f"🍽️ 오늘의 저녁 추천은... **{choice}**!")
 
-@tree.command(name="메뉴추가", description="점메추 메뉴에 새로운 항목을 추가합니다.")
+@tree.command(name="메뉴추가", description="메뉴에 새로운 항목을 추가합니다.")
 async def 메뉴추가(interaction: discord.Interaction, menu_name: str):
-    menu_list = load_menu()
-    if menu_name in menu_list:
-        await interaction.response.send_message(f"❌ 이미 메뉴에 '{menu_name}'가 있어요!")
-    else:
-        menu_list.append(menu_name)
-        save_menu(menu_list)
-        await interaction.response.send_message(f"✅ '{menu_name}' 메뉴가 추가됐어요!")
+    try:
+        await interaction.response.defer()
 
-@tree.command(name="메뉴삭제", description="점메추 메뉴에서 항목을 삭제합니다.")
+        sheet = get_sheet()
+        menu_sheet = sheet.spreadsheet.worksheet("Menu_List")
+        menus = menu_sheet.col_values(1)[1:]  # 헤더 제외 메뉴만 읽기
+
+        # 이미 있는 메뉴인지 확인
+        if menu_name in menus:
+            await interaction.followup.send(f"❌ 이미 '{menu_name}' 메뉴가 있어요!")
+            return
+
+        # 맨 아래에 추가
+        menu_sheet.append_row([menu_name])
+        await interaction.followup.send(f"✅ '{menu_name}' 메뉴가 추가됐어요!")
+
+    except Exception as e:
+        print(f"❗ /메뉴추가 에러 발생: {e}")
+        await interaction.followup.send("⚠️ 메뉴 추가에 실패했습니다.")
+
+
+@tree.command(name="메뉴삭제", description="메뉴에서 항목을 삭제합니다.")
 async def 메뉴삭제(interaction: discord.Interaction, menu_name: str):
-    menu_list = load_menu()
-    if menu_name not in menu_list:
-        await interaction.response.send_message(f"❌ '{menu_name}' 메뉴는 목록에 없어요!")
-    else:
-        menu_list.remove(menu_name)
-        save_menu(menu_list)
-        await interaction.response.send_message(f"🗑️ '{menu_name}' 메뉴가 삭제됐어요.")
+    try:
+        await interaction.response.defer()
 
-@tree.command(name="메뉴판", description="현재 등록된 점메추 메뉴를 보여줍니다.")
+        sheet = get_sheet()
+        menu_sheet = sheet.spreadsheet.worksheet("Menu_List")
+        menus = menu_sheet.col_values(1)[1:]  # 헤더 제외 읽기
+
+        if menu_name not in menus:
+            await interaction.followup.send(f"❌ '{menu_name}' 메뉴는 목록에 없어요!")
+            return
+
+        # 찾은 행 삭제
+        index = menus.index(menu_name) + 2  # 2부터 시작(헤더 포함하니까)
+        menu_sheet.delete_rows(index)
+        await interaction.followup.send(f"🗑️ '{menu_name}' 메뉴가 삭제됐어요!")
+
+    except Exception as e:
+        print(f"❗ /메뉴삭제 에러 발생: {e}")
+        await interaction.followup.send("⚠️ 메뉴 삭제에 실패했습니다.")
+
+
+@tree.command(name="메뉴판", description="현재 등록된 메뉴를 보여줍니다.")
 async def 메뉴판(interaction: discord.Interaction):
-    menu_list = load_menu()
-    if not menu_list:
-        await interaction.response.send_message("📭 등록된 메뉴가 없어요!")
-        return
+    try:
+        await interaction.response.defer()
 
-    formatted = "\n".join(f"- {item}" for item in menu_list)
-    if len(formatted) > 1900:
-        await interaction.response.send_message("⚠️ 메뉴가 너무 많아서 한 번에 보여줄 수 없어요.")
-    else:
-        await interaction.response.send_message(f"📋 현재 메뉴 ({len(menu_list)}개)\n\n{formatted}")
+        # 구글시트 Menu_List 시트 읽기
+        sheet = get_sheet()
+        menu_sheet = sheet.spreadsheet.worksheet("Menu_List")
+        menus = menu_sheet.col_values(1)[1:]  # 첫 줄(헤더) 제외하고 가져오기
+
+        if not menus:
+            await interaction.followup.send("📭 등록된 메뉴가 없어요!")
+            return
+
+        # 번호 매겨서 출력
+        message = "📋 현재 등록된 메뉴\n\n"
+        for idx, menu in enumerate(menus, start=1):
+            message += f"{idx}. {menu}\n"
+
+        await interaction.followup.send(message)
+
+    except Exception as e:
+        print(f"❗ /메뉴판 에러 발생: {e}")
+        await interaction.followup.send("⚠️ 메뉴판을 불러오는 데 실패했습니다.")
+
 
 # ✅ Render용 Flask 서버
 keep_alive()
