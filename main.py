@@ -129,7 +129,6 @@ async def on_message(message):
 
 # ✅ 슬래시 명령어: 이번 달 메시지 랭킹
 @tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 확인합니다.")
-@tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 확인합니다.")
 async def 이번달메시지(interaction: discord.Interaction):
     try:
         await interaction.response.defer()
