@@ -130,9 +130,9 @@ async def on_message(message):
 # ✅ 슬래시 명령어: 이번 달 메시지 랭킹
 @tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 확인합니다.")
 async def 이번달메시지(interaction: discord.Interaction):
-    try:
-        await interaction.response.defer()
+    await interaction.response.defer()
 
+    try:
         sheet = get_sheet()
         records = sheet.get_all_records()
 
@@ -171,12 +171,11 @@ async def 이번달메시지(interaction: discord.Interaction):
         msg = f"📊 {year}년 {month}월 메시지 랭킹\n"
 
         for i, (uid, cnt) in enumerate(sorted_results, 1):
-            # 서버별 닉네임 가져오기
             member = interaction.guild.get_member(uid)
             if member:
-                username = member.display_name  # 서버 닉네임
+                username = member.display_name
             else:
-                username = f"(ID:{uid})"  # 멤버 못 찾으면 그냥 ID 표시
+                username = f"(ID:{uid})"
 
             msg += f"{i}. {username} - {cnt}개\n"
 
@@ -186,12 +185,7 @@ async def 이번달메시지(interaction: discord.Interaction):
         import traceback
         print("❗ /이번달메시지 에러 발생:")
         traceback.print_exc()
-        try:
-            await interaction.followup.send("⚠️ 오류가 발생했습니다.")
-        except:
-            pass
-
-
+        # ❌ 여기서는 followup.send() 하지마! (이미 defer 했고 실패해도 추가 응답하지 말자)
 
 # ✅ 매달 1일 자동 랭킹 전송 + 초기화
 async def send_monthly_stats():
