@@ -224,18 +224,23 @@ async def send_monthly_stats():
 
         if sorted_results:
             top_name = sorted_results[0][2]
-            msg += f"\n🎉 이번 달 1등은 {top_name}님입니다! 모두 축하해주세요 🎉"
+            msg += f"\n🎉 지난달 1등은 {top_name}님입니다! 모두 축하해주세요 🎉"
 
         await channel.send(msg)
 
-        # ✅ 지난달 캐시 데이터 초기화
+        # ✅ 로컬 캐시 초기화
         for key in list(message_log.keys()):
             if f"-{year}-{month}" in key:
                 del message_log[key]
         save_data(message_log)
 
+        # ✅ Google Sheets 누적메시지수도 0으로 초기화
+        for idx in range(2, len(records)+2):  # 헤더 제외, 실제 데이터 줄 시작은 2
+            sheet.update_cell(idx, 3, 0)  # 3번 열 = 누적메시지수
+
     except Exception as e:
         print(f"❗ send_monthly_stats 에러 발생: {e}")
+
 
 # ✅ 공익근무표 기능
 duty_cycle = ["주간", "야간", "비번", "휴무"]
