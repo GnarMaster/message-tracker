@@ -1,6 +1,7 @@
 from keep_alive import keep_alive
 
 import discord
+import traceback
 import random
 from discord.ext import commands
 from datetime import datetime, timedelta
@@ -214,6 +215,7 @@ async def send_monthly_stats():
 
         channel = bot.get_channel(CHANNEL_ID)
         if not channel:
+            print("❗ 채널을 찾을 수 없음")
             return
 
         medals = ["🥇", "🥈", "🥉"]
@@ -243,7 +245,7 @@ async def send_monthly_stats():
 
     except Exception as e:
         print(f"❗ send_monthly_stats 에러 발생: {e}")
-
+        traceback.print_exc()
 
 
 
