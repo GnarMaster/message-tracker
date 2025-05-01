@@ -12,6 +12,7 @@ import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from discord import app_commands
+from pytz import timezone
 
 LAST_RUN_FILE = "last_run.json"
 
@@ -78,9 +79,11 @@ async def on_ready():
     print(f"✅ 봇 로그인 완료: {bot.user}")
     await tree.sync()
 
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=15, minute=0)
+    scheduler = AsyncIOScheduler(timezone=timezone("Asia/Seoul"))
+    scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=0, minute=0)
     scheduler.start()
+    print("🕛 현재 시간 (KST):", datetime.now(timezone("Asia/Seoul")))
+
 
     now = datetime.now()
     today_str = now.strftime("%Y-%m-%d")
