@@ -15,15 +15,24 @@ from discord import app_commands
 
 LAST_RUN_FILE = "last_run.json"
 
-def get_last_run_date():
-    if os.path.exists(LAST_RUN_FILE):
-        with open(LAST_RUN_FILE, "r") as f:
-            return json.load(f).get("last_run", "")
+def get_last_run_date_from_sheet():
+    try:
+        sheet = get_sheet().spreadsheet.worksheet("Settings")
+        key = sheet.acell("A1").value.strip().lower()
+        if key == "last_run":
+            return sheet.acell("B1").value.strip()
+    except Exception as e:
+        print(f"❗ get_last_run_date_from_sheet 에러: {e}")
     return ""
 
-def set_last_run_date(date_str):
-    with open(LAST_RUN_FILE, "w") as f:
-        json.dump({"last_run": date_str}, f)
+def set_last_run_date_to_sheet(date_str):
+    try:
+        sheet = get_sheet().spreadsheet.worksheet("Settings")
+        sheet.update_acell("A1", "last_run")
+        sheet.update_acell("B1", date_str)
+        print(f"✅ Google 시트에 last_run = {date_str} 기록됨")
+    except Exception as e:
+        print(f"❗ set_last_run_date_to_sheet 에러: {e}")
 
 # ✅ .env 불러오기
 load_dotenv()
@@ -73,15 +82,15 @@ async def on_ready():
     scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=15, minute=0)
     scheduler.start()
 
-    # 🔁 자동 보정: 1일 15시 이후 & 오늘 아직 실행 안 했으면 실행
     now = datetime.now()
     today_str = now.strftime("%Y-%m-%d")
-    last_run = get_last_run_date()
+    last_run = get_last_run_date_from_sheet()
 
     if now.day == 1 and now.hour >= 15 and today_str != last_run:
-        print("🕒 1일 15시 이후 감지 → send_monthly_stats 수동 실행")
+        print("🕒 Google Sheets 기준 1일 15시 이후 실행 → send_monthly_stats()")
         await send_monthly_stats()
-        set_last_run_date(today_str)
+        set_last_run_date_to_sheet(today_str)
+
 
 
 # ✅ 채팅 감지
