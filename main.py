@@ -13,6 +13,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from discord import app_commands
 
+
 # ✅ .env 불러오기
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
