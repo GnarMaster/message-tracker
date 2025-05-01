@@ -13,6 +13,17 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from discord import app_commands
 
+LAST_RUN_FILE = "last_run.json"
+
+def get_last_run_date():
+    if os.path.exists(LAST_RUN_FILE):
+        with open(LAST_RUN_FILE, "r") as f:
+            return json.load(f).get("last_run", "")
+    return ""
+
+def set_last_run_date(date_str):
+    with open(LAST_RUN_FILE, "w") as f:
+        json.dump({"last_run": date_str}, f)
 
 # ✅ .env 불러오기
 load_dotenv()
@@ -59,8 +70,19 @@ async def on_ready():
     await tree.sync()
 
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=15, minute=0)  # 매달 1일 15시
+    scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=15, minute=0)
     scheduler.start()
+
+    # 🔁 자동 보정: 1일 15시 이후 & 오늘 아직 실행 안 했으면 실행
+    now = datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+    last_run = get_last_run_date()
+
+    if now.day == 1 and now.hour >= 15 and today_str != last_run:
+        print("🕒 1일 15시 이후 감지 → send_monthly_stats 수동 실행")
+        await send_monthly_stats()
+        set_last_run_date(today_str)
+
 
 # ✅ 채팅 감지
 @bot.event
@@ -223,11 +245,12 @@ async def send_monthly_stats():
         msg = f"📊 {year}년 {month}월 메시지 랭킹\n\n"
 
         for i, (uid, count, username) in enumerate(sorted_results[:3]):
-            msg += f"{medals[i]} {username} - {count}개\n"
+            msg += f"{medals[i]} <@{uid}> - {count}개\n"
 
         if sorted_results:
             top_name = sorted_results[0][2]
-            msg += f"\n🎉 지난달 1등은 {top_name}님입니다! 모두 축하해주세요 🎉"
+            top_id = sorted_results[0][0]
+            msg += f"\n🎉 지난달 1등은 <@{top_id}>님입니다! 모두 축하해주세요 🎉"
 
         await channel.send(msg)
 
