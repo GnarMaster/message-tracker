@@ -373,15 +373,16 @@ async def 메뉴판(interaction: discord.Interaction):
         print(f"❗ /메뉴판 에러 발생: {e}")
         await interaction.followup.send("⚠️ 메뉴판을 불러오는 데 실패했습니다.")
         
-@tree.command(name="강제월말처리", description="(관리자용) 지난달 메시지 랭킹을 수동으로 처리합니다.")
+@tree.command(name="강제월말처리", description="지난달 메시지 랭킹을 수동으로 처리합니다.")
 async def 강제월말처리(interaction: discord.Interaction):
-    await interaction.response.defer()
     try:
+        await interaction.response.defer(thinking=True, ephemeral=True)
         await send_monthly_stats()
         await interaction.followup.send("✅ 월말 메시지 랭킹 전송 및 캐시 초기화 완료!")
     except Exception as e:
         print(f"❗ /강제월말처리 에러: {e}")
         await interaction.followup.send("⚠️ 실행 중 오류가 발생했습니다.")
+
 
 
 # ✅ Render용 Flask 서버
