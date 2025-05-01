@@ -186,7 +186,7 @@ async def 이번달메시지(interaction: discord.Interaction):
 # ✅ 매달 1일 1등 축하
 async def send_monthly_stats():
     try:
-        await sync_cache_to_sheet()  # ✅ 캐시 먼저 업로드!
+        await sync_cache_to_sheet()  # ✅ 캐시 먼저 업로드
         sheet = get_sheet()
         records = sheet.get_all_records()
 
@@ -234,12 +234,17 @@ async def send_monthly_stats():
                 del message_log[key]
         save_data(message_log)
 
-        # ✅ Google Sheets 누적메시지수도 0으로 초기화
-        for idx in range(2, len(records)+2):  # 헤더 제외, 실제 데이터 줄 시작은 2
-            sheet.update_cell(idx, 3, 0)  # 3번 열 = 누적메시지수
+        # ✅ Google Sheets 누적메시지수 초기화 (batch update 방식)
+        cell_list = sheet.range(f"C2:C{len(records)+1}")  # C열 = 누적메시지수
+        for cell in cell_list:
+            cell.value = 0
+        sheet.update_cells(cell_list)
+        print("✅ 시트 메시지수 전체 초기화 완료")
 
     except Exception as e:
         print(f"❗ send_monthly_stats 에러 발생: {e}")
+
+
 
 
 # ✅ 공익근무표 기능
