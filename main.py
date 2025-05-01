@@ -383,6 +383,7 @@ async def 강제월말처리(interaction: discord.Interaction):
         await interaction.followup.send("✅ 월말 메시지 랭킹 전송 및 캐시 초기화 완료!")
     except Exception as e:
         print(f"❗ /강제월말처리 에러: {e}")
+        traceback.print_exc() 
         await interaction.followup.send("⚠️ 실행 중 오류가 발생했습니다.")
 
 
