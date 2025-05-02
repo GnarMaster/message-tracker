@@ -306,20 +306,6 @@ async def duty_chart(interaction: discord.Interaction):
 
     await interaction.response.send_message("\n".join(result))
 
-@tree.command(name="공익", description="이름을 입력하면 해당 사람의 근무를 알려줍니다.")
-async def duty_for_person(interaction: discord.Interaction, name: str):
-    name = name.strip()
-    if name not in start_dates:
-        await interaction.response.send_message(f"{name}님의 근무 정보를 찾을 수 없습니다.")
-        return
-
-    today = (datetime.utcnow() + timedelta(hours=9)).date()
-    start_date = start_dates[name]
-    days_passed = (today - start_date.date()).days
-    duty = duty_cycle[days_passed % len(duty_cycle)]
-
-    await interaction.response.send_message(f"{name}님의 오늘 근무는 \"{duty}\"입니다.")
-
 # ✅ 점메추 기능
 
 def load_menu():
