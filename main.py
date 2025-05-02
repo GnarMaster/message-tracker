@@ -396,23 +396,6 @@ async def 메뉴판(interaction: discord.Interaction):
     except Exception as e:
         print(f"❗ /메뉴판 에러 발생: {e}")
         await interaction.followup.send("⚠️ 메뉴판을 불러오는 데 실패했습니다.")
-        
-@tree.command(name="json확인", description="last_run.json 내용을 콘솔에 출력합니다.")
-async def json확인(interaction: discord.Interaction):
-    try:
-        await interaction.response.send_message("📂 last_run.json 내용을 콘솔에 출력했어요!", ephemeral=True)
-
-        if os.path.exists("last_run.json"):
-            with open("last_run.json", "r", encoding="utf-8") as f:
-                last_data = json.load(f)
-                print("📂 [last_run.json]", last_data)
-        else:
-            print("📂 [last_run.json] 파일 없음")
-
-    except Exception as e:
-        print(f"❗ /json확인 에러: {e}")
-        traceback.print_exc()
-        await interaction.followup.send("⚠️ 오류가 발생했습니다.", ephemeral=True)
 
 # ✅ Render용 Flask 서버
 keep_alive()
