@@ -80,8 +80,16 @@ async def on_ready():
     await tree.sync()
 
     scheduler = AsyncIOScheduler(timezone=timezone("Asia/Seoul"))
+    
+ # ✅ 1분마다 실행되는 작업 등록
+    @scheduler.scheduled_job('interval', minutes=1)
+    async def periodic_sync():
+        await sync_cache_to_sheet()
+
+    
     scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=0, minute=0)
     scheduler.start()
+    
     print("🕛 현재 시간 (KST):", datetime.now(timezone("Asia/Seoul")))
 
 
@@ -105,33 +113,7 @@ async def on_message(message):
     now = datetime.now()
     key = f"{message.author.id}-{now.year}-{now.month}"
     message_log[key] = message_log.get(key, 0) + 1
-    save_data(message_log)
-    try:
-        sheet = get_sheet()
-        records = sheet.get_all_records()
-        existing_data = {}
-
-        for idx, row in enumerate(records, start=2):
-            user_id = str(row.get("유저 ID", "")).strip()
-            try:
-                count = int(str(row.get("누적메시지수", 0)).strip())
-            except:
-                count = 0
-            if user_id:
-                existing_data[user_id] = (idx, count)
-
-        user_id_str = str(message.author.id)
-
-        if user_id_str in existing_data:
-            row_num, current_count = existing_data[user_id_str]
-            new_total = current_count + 1  # 새로 1개 추가
-            sheet.update_cell(row_num, 3, new_total)
-        else:
-            user = message.author
-            sheet.append_row([user_id_str, user.name, 1])
-
-    except Exception as e:
-        print(f"❗ on_message 업데이트 에러: {e}")
+    save_data(message_log)  
         
     await bot.process_commands(message)
 
@@ -178,6 +160,8 @@ async def sync_cache_to_sheet():
 async def 이번달메시지(interaction: discord.Interaction):
     try:
         await interaction.response.defer()
+        
+        await sync_cache_to_sheet()  # ✅ 캐시 먼저 업로드
 
         sheet = get_sheet()
         records = sheet.get_all_records()
