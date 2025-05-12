@@ -192,7 +192,7 @@ async def sync_cache_to_sheet():
 
         # 업데이트 준비
         update_data = []
-        for key, value in message_log.items():
+        for key, value in list(message_log.items()):
             user_id, y, m = key.split('-')
             if int(y) != year or int(m) != month:
                 continue
