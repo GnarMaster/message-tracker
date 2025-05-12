@@ -14,6 +14,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from discord import app_commands
 from pytz import timezone
+from gspread.utils import rowcol_to_a1
 
 LAST_RUN_FILE = "last_run.json"
 
