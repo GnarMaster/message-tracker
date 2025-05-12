@@ -92,6 +92,7 @@ def save_data(data):
 
 # ✅ message_log 초기화
 message_log = {}
+detail_log = {}
 
 # ✅ 서버 시작시
 @bot.event
@@ -132,6 +133,27 @@ async def on_message(message):
 
     now = datetime.now()
     key = f"{message.author.id}-{now.year}-{now.month}"
+    dkey = f"{message.author.id}-{now.year}-{now.month}"
+    if dkey not in detail_log:
+        detail_log[dkey] = {"mention": 0, "link": 0, "image": 0, "emoji": 0}
+
+    # 멘션 카운트
+    detail_log[dkey]["mention"] += message.content.count("@")
+
+    # 링크 카운트
+    if "http://" in message.content or "https://" in message.content:
+        detail_log[dkey]["link"] += 1
+
+    # 이미지 카운트
+    if message.attachments:
+        for att in message.attachments:
+            if any(att.filename.lower().endswith(ext) for ext in ["jpg", "jpeg", "png", "gif", "webp"]):
+                detail_log[dkey]["image"] += 1
+
+    # 이모지 카운트 (기본 유니코드 기준, 단순 필터링)
+    emoji_count = sum(1 for c in message.content if ord(c) > 10000)
+    detail_log[dkey]["emoji"] += emoji_count
+
     message_log[key] = message_log.get(key, 0) + 1
     save_data(message_log)  
         
@@ -147,7 +169,7 @@ async def sync_cache_to_sheet():
         records = sheet.get_all_records()
         existing_data = {}  # {user_id: (row_num, current_count)}
 
-        for idx, row in enumerate(records, start=2):  # 헤더 빼고
+        for idx, row in enumerate(records, start=2):  # 헤더 제외
             user_id = str(row.get("유저 ID", "")).strip()
             try:
                 count = int(str(row.get("누적메시지수", 0)).strip())
@@ -165,15 +187,41 @@ async def sync_cache_to_sheet():
                 row_num, current_count = existing_data[user_id]
                 new_total = current_count + value  # 기존 누적 + 캐시값
                 sheet.update_cell(row_num, 3, new_total)
+
+                # ✅ 히든 항목 추가 업데이트
+                sheet.update_cell(row_num, 4, detail_log.get(key, {}).get("mention", 0))
+                sheet.update_cell(row_num, 5, detail_log.get(key, {}).get("link", 0))
+                sheet.update_cell(row_num, 6, detail_log.get(key, {}).get("image", 0))
+                sheet.update_cell(row_num, 7, detail_log.get(key, {}).get("emoji", 0))
+
             else:
+                # 신규 유저: row 새로 추가
                 user = await bot.fetch_user(int(user_id))
-                sheet.append_row([user_id, user.name, value])
+                stats = detail_log.get(key, {})
+                sheet.append_row([
+                    user_id,
+                    user.name,
+                    value,
+                    stats.get("mention", 0),
+                    stats.get("link", 0),
+                    stats.get("image", 0),
+                    stats.get("emoji", 0),
+                ])
 
             del message_log[key]
 
+        # ✅ 캐시 저장 및 정리
         save_data(message_log)
+
+        for key in list(detail_log.keys()):
+            if f"-{year}-{month}" in key:
+                del detail_log[key]
+
     except Exception as e:
         print(f"❗ sync_cache_to_sheet 에러: {e}")
+        import traceback
+        traceback.print_exc()
+
 
 # ✅ 이번달메시지 명령어
 @tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 확인합니다.")
@@ -267,6 +315,37 @@ async def send_monthly_stats():
             top_name = sorted_results[0][2]
             top_id = sorted_results[0][0]
             msg += f"\n🎉 지난달 1등은 <@{top_id}>님입니다! 모두 축하해주세요 🎉"
+            
+
+         # ✅ 히든 랭킹 출력
+        hidden_scores = {"mention": [], "link": [], "image": [], "emoji": []}
+        for row in records:
+            try:
+                uid_raw = row.get("유저 ID", "0")
+                uid = int(float(uid_raw))  # ID는 float으로 저장될 수 있음
+                mention = int(str(row.get("멘션", 0)))
+                link = int(str(row.get("링크", 0)))
+                image = int(str(row.get("이미지", 0)))
+                emoji = int(str(row.get("이모지", 0)))
+                hidden_scores["mention"].append((uid, mention))
+                hidden_scores["link"].append((uid, link))
+                hidden_scores["image"].append((uid, image))
+                hidden_scores["emoji"].append((uid, emoji))
+            except Exception:
+                continue
+
+        hidden_msg = "\n\n💡 히든 랭킹 🕵️"
+        names = {"mention": "📣 멘션왕", "link": "🔗 링크왕", "image": "🖼️ 사진왕", "emoji": "😂 이모지왕"}
+
+        for cat, entries in hidden_scores.items():
+            if not entries:
+                continue
+            top_uid, top_count = sorted(entries, key=lambda x: -x[1])[0]
+            hidden_msg += f"\n{names[cat]}: <@{top_uid}> ({top_count}회)"
+
+        msg += hidden_msg
+
+
 
         await channel.send(msg)
 
@@ -276,12 +355,11 @@ async def send_monthly_stats():
                 del message_log[key]
         save_data(message_log)
 
-        # ✅ Google Sheets 누적메시지수 초기화 (batch update 방식)
-        cell_list = sheet.range(f"C2:C{len(records)+1}")  # C열 = 누적메시지수
-        for cell in cell_list:
-            cell.value = 0
-        sheet.update_cells(cell_list)
-        print("✅ 시트 메시지수 전체 초기화 완료")
+       
+        # ✅ Google Sheets 전체 초기화 (헤더 제외 삭제)
+        sheet.batch_clear(["A2:G"])  # A열~G열 2행 아래 전부 제거
+        print("✅ 시트 전체 초기화 완료 (헤더 제외)")
+
 
     except Exception as e:
         print(f"❗ send_monthly_stats 에러 발생: {e}")
