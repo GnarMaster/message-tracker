@@ -133,33 +133,39 @@ async def on_message(message):
         return
 
     now = datetime.now()
-    key = f"{message.author.id}-{now.year}-{now.month}"
-    dkey = f"{message.author.id}-{now.year}-{now.month}"
-    if dkey not in detail_log:
-        detail_log[dkey] = {"mention": 0, "link": 0, "image": 0, "emoji": 0}
+    year_month = f"{message.author.id}-{now.year}-{now.month}"
+    channel_name = message.channel.name
 
-    # 멘션 카운트
-    detail_log[dkey]["mention"] += message.content.count("@")
+    # ✅ detail_log 초기화 및 누적
+    if year_month not in detail_log:
+        detail_log[year_month] = {"mention": 0, "link": 0, "image": 0, "emoji": 0}
 
-    # 링크 카운트
+    detail_log[year_month]["mention"] += message.content.count("@")
+
     if "http://" in message.content or "https://" in message.content:
-        detail_log[dkey]["link"] += 1
+        detail_log[year_month]["link"] += 1
 
-    # 이미지 카운트
     if message.attachments:
         for att in message.attachments:
             if any(att.filename.lower().endswith(ext) for ext in ["jpg", "jpeg", "png", "gif", "webp"]):
-                detail_log[dkey]["image"] += 1
+                detail_log[year_month]["image"] += 1
 
-    # 이모지 카운트 (기본 유니코드 기준, 단순 필터링)
     emoji_matches = re.findall(r"<a?:\w+:\d+>", message.content)
-    emoji_count = len(emoji_matches)
-    detail_log[dkey]["emoji"] += emoji_count
+    detail_log[year_month]["emoji"] += len(emoji_matches)
 
-    message_log[key] = message_log.get(key, 0) + 1
-    save_data(message_log)  
-        
+    # ✅ message_log 구조: {user-년-월: {"total": X, "channels": {"채널명": X}}}
+    if year_month not in message_log:
+        message_log[year_month] = {"total": 0, "channels": {}}
+
+    message_log[year_month]["total"] += 1
+    message_log[year_month]["channels"][channel_name] = message_log[year_month]["channels"].get(channel_name, 0) + 1
+
+    # ✅ 캐시 저장
+    save_data(message_log)
+
+    # ✅ 명령어 처리
     await bot.process_commands(message)
+
 
 # ✅ 캐시를 구글시트에 합산 저장
 async def sync_cache_to_sheet():
@@ -169,9 +175,12 @@ async def sync_cache_to_sheet():
         year, month = now.year, now.month
 
         records = sheet.get_all_records()
-        existing_data = {}  # {user_id: (row_num, current_count)}
+        existing_data = {}  # {user_id: (row_num, current_total)}
+        header = sheet.row_values(1)
+        channel_columns = {name: idx+1 for idx, name in enumerate(header) if idx >= 7}  # H열부터
 
-        for idx, row in enumerate(records, start=2):  # 헤더 제외
+        # 기존 사용자 데이터 저장
+        for idx, row in enumerate(records, start=2):
             user_id = str(row.get("유저 ID", "")).strip()
             try:
                 count = int(str(row.get("누적메시지수", 0)).strip())
@@ -180,50 +189,91 @@ async def sync_cache_to_sheet():
             if user_id:
                 existing_data[user_id] = (idx, count)
 
+        # 업데이트 준비
+        update_data = []
         for key, value in message_log.items():
             user_id, y, m = key.split('-')
             if int(y) != year or int(m) != month:
                 continue
 
-            if user_id in existing_data:
-                row_num, current_count = existing_data[user_id]
-                new_total = current_count + value  # 기존 누적 + 캐시값
-                sheet.update_cell(row_num, 3, new_total)
+            channels = value["channels"]
+            total_count = value["total"]
+            stats = detail_log.get(key, {})
 
-                # ✅ 히든 항목 추가 업데이트
+            if user_id in existing_data:
+                row_num, current_total = existing_data[user_id]
+                new_total = current_total + total_count
+
                 # 누적 값 계산
                 existing_row = records[row_num - 2]
-                mention_total = int(existing_row.get("멘션수", 0)) + detail_log.get(key, {}).get("mention", 0)
-                link_total = int(existing_row.get("링크수", 0)) + detail_log.get(key, {}).get("link", 0)
-                image_total = int(existing_row.get("이미지수", 0)) + detail_log.get(key, {}).get("image", 0)
-                emoji_total = int(existing_row.get("이모지수", 0)) + detail_log.get(key, {}).get("emoji", 0)
+                mention_total = int(existing_row.get("멘션수", 0)) + stats.get("mention", 0)
+                link_total = int(existing_row.get("링크수", 0)) + stats.get("link", 0)
+                image_total = int(existing_row.get("이미지수", 0)) + stats.get("image", 0)
+                emoji_total = int(existing_row.get("이모지수", 0)) + stats.get("emoji", 0)
 
-                # 시트 업데이트
-                sheet.update_cell(row_num, 3, new_total)
-                sheet.update_cell(row_num, 4, mention_total)
-                sheet.update_cell(row_num, 5, link_total)
-                sheet.update_cell(row_num, 6, image_total)
-                sheet.update_cell(row_num, 7, emoji_total)
+                update_data.extend([
+                    {"range": f"C{row_num}", "values": [[new_total]]},
+                    {"range": f"D{row_num}", "values": [[mention_total]]},
+                    {"range": f"E{row_num}", "values": [[link_total]]},
+                    {"range": f"F{row_num}", "values": [[image_total]]},
+                    {"range": f"G{row_num}", "values": [[emoji_total]]},
+                ])
+
+                # 채널별 수 추가
+                for ch_name, ch_count in channels.items():
+                    if ch_name not in channel_columns:
+                        col_index = len(header) + 1
+                        sheet.update_cell(1, col_index, ch_name)
+                        channel_columns[ch_name] = col_index
+                        header.append(ch_name)
+                    col_letter = chr(64 + channel_columns[ch_name])  # A=65
+                    existing_val = int(existing_row.get(ch_name, 0))
+                    update_data.append({
+                        "range": f"{col_letter}{row_num}",
+                        "values": [[existing_val + ch_count]]
+                    })
 
             else:
-                # 신규 유저: row 새로 추가
+                # 신규 유저
                 user = await bot.fetch_user(int(user_id))
-                stats = detail_log.get(key, {})
-                sheet.append_row([
+                row = [
                     user_id,
                     user.name,
-                    value,
+                    total_count,
                     stats.get("mention", 0),
                     stats.get("link", 0),
                     stats.get("image", 0),
                     stats.get("emoji", 0),
-                ])
+                ]
 
+                # 채널별 열 순서 맞춰서 초기 0으로
+                row += [0] * (len(header) - 7)
+                for ch_name, ch_count in channels.items():
+                    if ch_name not in channel_columns:
+                        col_index = len(header) + 1
+                        sheet.update_cell(1, col_index, ch_name)
+                        channel_columns[ch_name] = col_index
+                        header.append(ch_name)
+                        row += [0]
+                    col_pos = channel_columns[ch_name] - 1
+                    while len(row) <= col_pos:
+                        row += [0]
+                    row[col_pos] += ch_count
+
+                sheet.append_row(row)
+
+            # 캐시에서 삭제
             del message_log[key]
 
-        # ✅ 캐시 저장 및 정리
+        if update_data:
+            sheet.batch_update({
+                "valueInputOption": "USER_ENTERED",
+                "data": update_data
+            })
+
         save_data(message_log)
 
+        # detail_log 초기화
         for key in list(detail_log.keys()):
             if f"-{year}-{month}" in key:
                 del detail_log[key]
@@ -232,7 +282,6 @@ async def sync_cache_to_sheet():
         print(f"❗ sync_cache_to_sheet 에러: {e}")
         import traceback
         traceback.print_exc()
-
 
 # ✅ 이번달메시지 명령어
 @tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 확인합니다.")
@@ -368,7 +417,7 @@ async def send_monthly_stats():
 
        
         # ✅ Google Sheets 전체 초기화 (헤더 제외 삭제)
-        sheet.batch_clear(["A2:G"])  # A열~G열 2행 아래 전부 제거
+        sheet.batch_clear(["A2:ZZ"])  # A열~G열 2행 아래 전부 제거
         print("✅ 시트 전체 초기화 완료 (헤더 제외)")
 
 
