@@ -226,8 +226,16 @@ async def sync_cache_to_sheet():
                         sheet.update_cell(1, col_index, ch_name)
                         channel_columns[ch_name] = col_index
                         header.append(ch_name)
-                    col_letter = chr(64 + channel_columns[ch_name])  # A=65
-                    existing_val = int(existing_row.get(ch_name, 0))
+
+                    col_letter = rowcol_to_a1(1, channel_columns[ch_name])[:-1]
+    
+                    # ✅ 안전한 값 변환
+                    raw_val = str(existing_row.get(ch_name, "0")).strip()
+                    try:
+                        existing_val = int(raw_val)
+                    except:
+                        existing_val = 0
+
                     update_data.append({
                         "range": f"{col_letter}{row_num}",
                         "values": [[existing_val + ch_count]]
