@@ -1,5 +1,6 @@
 from keep_alive import keep_alive
 
+import re
 import discord
 import traceback
 import random
@@ -151,7 +152,8 @@ async def on_message(message):
                 detail_log[dkey]["image"] += 1
 
     # 이모지 카운트 (기본 유니코드 기준, 단순 필터링)
-    emoji_count = sum(1 for c in message.content if ord(c) > 10000)
+    emoji_matches = re.findall(r"<a?:\w+:\d+>", message.content)
+    emoji_count = len(emoji_matches)
     detail_log[dkey]["emoji"] += emoji_count
 
     message_log[key] = message_log.get(key, 0) + 1
