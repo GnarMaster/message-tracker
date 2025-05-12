@@ -16,6 +16,7 @@ from pytz import timezone
 
 LAST_RUN_FILE = "last_run.json"
 
+# 이번달랭킹 실행했는지 확인하는 함수
 def get_last_run_date_from_sheet():
     try:
         sheet = get_sheet().spreadsheet.worksheet("Settings")
@@ -34,6 +35,27 @@ def set_last_run_date_to_sheet(date_str):
         print(f"✅ Google 시트에 last_run = {date_str} 기록됨")
     except Exception as e:
         print(f"❗ set_last_run_date_to_sheet 에러: {e}")
+        
+#생일축하했는지 확인하는 함수
+def get_last_birthday_run():
+    try:
+        sheet = get_sheet().spreadsheet.worksheet("Settings")
+        key = sheet.acell("A2").value.strip().lower()
+        if key == "last_birthday_run":
+            return sheet.acell("B2").value.strip()
+    except Exception as e:
+        print(f"❗ get_last_birthday_run 에러: {e}")
+    return ""
+
+def set_last_birthday_run(date_str):
+    try:
+        sheet = get_sheet().spreadsheet.worksheet("Settings")
+        sheet.update_acell("A2", "last_birthday_run")
+        sheet.update_acell("B2", date_str)
+        print(f"✅ 생일 축하 실행일 기록됨: {date_str}")
+    except Exception as e:
+        print(f"❗ set_last_birthday_run 에러: {e}")
+
 
 # ✅ .env 불러오기
 load_dotenv()
@@ -78,16 +100,14 @@ async def on_ready():
     message_log = load_data()
     print(f"✅ 봇 로그인 완료: {bot.user}")
     await tree.sync()
-
     scheduler = AsyncIOScheduler(timezone=timezone("Asia/Seoul"))
-    
+    scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=0, minute=0)
+    scheduler.add_job(send_birthday_congrats, 'cron', hour=0, minute=0)
  # ✅ 1분마다 실행되는 작업 등록
     @scheduler.scheduled_job('interval', minutes=1)
     async def periodic_sync():
         await sync_cache_to_sheet()
 
-    
-    scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=0, minute=0)
     scheduler.start()
     
     print("🕛 현재 시간 (KST):", datetime.now(timezone("Asia/Seoul")))
@@ -380,6 +400,94 @@ async def 메뉴판(interaction: discord.Interaction):
     except Exception as e:
         print(f"❗ /메뉴판 에러 발생: {e}")
         await interaction.followup.send("⚠️ 메뉴판을 불러오는 데 실패했습니다.")
+
+# ✅ 생일추가 기능
+@tree.command(name="생일추가", description="당신의 생일을 추가합니다. (형식: MMDD)")
+@app_commands.describe(birthday="생일을 MMDD 형식으로 입력해주세요. 예: 0402")
+async def 생일추가(interaction: discord.Interaction, birthday: str):
+    try:
+        await interaction.response.defer()
+
+        # ✅ 숫자만 4자리 입력됐는지 확인
+        if not (birthday.isdigit() and len(birthday) == 4):
+            await interaction.followup.send("⚠️ 생일은 MMDD 형식의 숫자 4자리로 입력해주세요! 예: 0402")
+            return
+
+        # ✅ MM-DD 형태로 변환
+        month = birthday[:2]
+        day = birthday[2:]
+        formatted_birthday = f"{month}-{day}"
+
+        # ✅ 날짜 검증
+        try:
+            datetime.strptime(formatted_birthday, "%m-%d")
+        except ValueError:
+            await interaction.followup.send("⚠️ 존재하지 않는 날짜예요! (예: 0231은 안돼요)")
+            return
+
+        user_id = str(interaction.user.id)
+        nickname = interaction.user.name
+
+        sheet = get_sheet().spreadsheet.worksheet("Dictionary_Birth_SAVE")
+        records = sheet.get_all_records()
+
+        updated = False
+
+        for idx, row in enumerate(records, start=2):
+            if str(row.get("유저 ID", "")).strip() == user_id:
+                sheet.update_cell(idx, 3, formatted_birthday)
+                updated = True
+                break
+
+        if not updated:
+            sheet.append_row([user_id, nickname, formatted_birthday])
+
+        await interaction.followup.send(f"🎉 생일이 `{formatted_birthday}`로 저장됐어요!")
+
+    except Exception as e:
+        print(f"❗ /생일추가 에러 발생: {e}")
+        import traceback
+        traceback.print_exc()
+        await interaction.followup.send("⚠️ 생일 저장 중 오류가 발생했어요.")
+
+
+
+# ✅ 생일축하 기능 
+async def send_birthday_congrats():
+    try:
+        today_str = datetime.now(timezone("Asia/Seoul")).strftime("%Y-%m-%d")
+        last_run = get_last_birthday_run()
+
+        if last_run == today_str:
+            print("✅ 오늘 생일 축하 이미 완료됨")
+            return
+
+        sheet = get_sheet().spreadsheet.worksheet("Dictionary_Birth_SAVE")
+        records = sheet.get_all_records()
+        today_md = datetime.now(timezone("Asia/Seoul")).strftime("%m-%d")
+        birthday_users = []
+
+        for row in records:
+            if row.get("생일", "").strip() == today_md:
+                uid = str(row.get("유저 ID", "")).strip()
+                birthday_users.append(uid)
+
+        if birthday_users:
+            channel = bot.get_channel(CHANNEL_ID)
+            if channel:
+                mentions = "\n".join([f"🎂 <@{uid}> 님" for uid in birthday_users])
+                msg = f"🎉 오늘은 생일인 친구들이 있어요!\n{mentions}\n🎉 다 함께 축하해주세요! 🎈"
+                await channel.send(msg)
+
+            # ✅ 생일자 있을 때만 실행 기록
+            set_last_birthday_run(today_str)
+        else:
+            print("ℹ️ 오늘 생일인 유저 없음. 실행 기록은 하지 않음.")
+
+    except Exception as e:
+        print(f"❗ 생일 축하 에러 발생: {e}")
+        import traceback
+        traceback.print_exc()
 
 # ✅ Render용 Flask 서버
 keep_alive()
