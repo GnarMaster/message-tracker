@@ -274,11 +274,9 @@ async def sync_cache_to_sheet():
             # 캐시에서 삭제
             del message_log[key]
 
-        if update_data:
-            sheet.batch_update({
-                "valueInputOption": "USER_ENTERED",
-                "data": update_data
-            })
+       if update_data:
+            sheet.batch_update(update_data, value_input_option="USER_ENTERED")
+
 
         save_data(message_log)
 
