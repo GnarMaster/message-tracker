@@ -191,10 +191,19 @@ async def sync_cache_to_sheet():
                 sheet.update_cell(row_num, 3, new_total)
 
                 # ✅ 히든 항목 추가 업데이트
-                sheet.update_cell(row_num, 4, detail_log.get(key, {}).get("mention", 0))
-                sheet.update_cell(row_num, 5, detail_log.get(key, {}).get("link", 0))
-                sheet.update_cell(row_num, 6, detail_log.get(key, {}).get("image", 0))
-                sheet.update_cell(row_num, 7, detail_log.get(key, {}).get("emoji", 0))
+                # 누적 값 계산
+                existing_row = records[row_num - 2]
+                mention_total = int(existing_row.get("멘션수", 0)) + detail_log.get(key, {}).get("mention", 0)
+                link_total = int(existing_row.get("링크수", 0)) + detail_log.get(key, {}).get("link", 0)
+                image_total = int(existing_row.get("이미지수", 0)) + detail_log.get(key, {}).get("image", 0)
+                emoji_total = int(existing_row.get("이모지수", 0)) + detail_log.get(key, {}).get("emoji", 0)
+
+                # 시트 업데이트
+                sheet.update_cell(row_num, 3, new_total)
+                sheet.update_cell(row_num, 4, mention_total)
+                sheet.update_cell(row_num, 5, link_total)
+                sheet.update_cell(row_num, 6, image_total)
+                sheet.update_cell(row_num, 7, emoji_total)
 
             else:
                 # 신규 유저: row 새로 추가
