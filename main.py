@@ -275,7 +275,9 @@ async def sync_cache_to_sheet():
             del message_log[key]
 
         if update_data:
-           sheet.batch_update(update_data, value_input_option="USER_ENTERED")
+            sheet.batch_update({
+                "valueInputOption": "USER_ENTERED",
+                "data": update_data
             })
 
         save_data(message_log)
