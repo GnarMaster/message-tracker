@@ -334,8 +334,9 @@ async def 이번달메시지(interaction: discord.Interaction):
 # ✅ 매달 1일 1등 축하
 async def send_monthly_stats():
     try:
-        await sync_cache_to_sheet()  # ✅ 캐시 먼저 업로드
+        await sync_cache_to_sheet()
         sheet = get_sheet()
+        spreadsheet = sheet.spreadsheet
         records = sheet.get_all_records()
 
         now = datetime.now()
@@ -345,15 +346,13 @@ async def send_monthly_stats():
         results = []
 
         for row in records:
-            uid_raw = row.get("유저 ID", "0")
             try:
-                uid = int(float(uid_raw))
-            except Exception:
+                uid = int(float(row.get("유저 ID", "0")))
+                count = int(str(row.get("누적메시지수", 0)).strip())
+                username = row.get("닉네임", f"(ID:{uid})")
+                results.append((uid, count, username))
+            except:
                 continue
-
-            count = int(str(row.get("누적메시지수", 0)).strip())
-            username = row.get("닉네임", f"(ID:{uid})")
-            results.append((uid, count, username))
 
         if not results:
             return
@@ -369,63 +368,93 @@ async def send_monthly_stats():
         msg = f"📊 {year}년 {month}월 메시지 랭킹\n\n"
 
         for i, (uid, count, username) in enumerate(sorted_results[:3]):
-            msg += f"{medals[i]} <@{uid}> - {count}개\n"
+            display = f"<@{uid}>" if i == 0 else username  # 1등만 태그
+            msg += f"{medals[i]} {display} - {count}개\n"
 
         if sorted_results:
-            top_name = sorted_results[0][2]
             top_id = sorted_results[0][0]
             msg += f"\n🎉 지난달 1등은 <@{top_id}>님입니다! 모두 축하해주세요 🎉"
-            
 
-         # ✅ 히든 랭킹 출력
+        # ✅ 히든 랭킹 출력
         hidden_scores = {"mention": [], "link": [], "image": [], "emoji": []}
         for row in records:
             try:
-                uid_raw = row.get("유저 ID", "0")
-                uid = int(float(uid_raw))  # ID는 float으로 저장될 수 있음
-                mention = int(str(row.get("멘션", 0)))
-                link = int(str(row.get("링크", 0)))
-                image = int(str(row.get("이미지", 0)))
-                emoji = int(str(row.get("이모지", 0)))
+                uid = int(float(row.get("유저 ID", 0)))
+                mention = int(row.get("멘션", 0))
+                link = int(row.get("링크", 0))
+                image = int(row.get("이미지", 0))
+                emoji = int(row.get("이모지", 0))
                 hidden_scores["mention"].append((uid, mention))
                 hidden_scores["link"].append((uid, link))
                 hidden_scores["image"].append((uid, image))
                 hidden_scores["emoji"].append((uid, emoji))
-            except Exception:
+            except:
                 continue
 
         hidden_msg = "\n\n💡 히든 랭킹 🕵️"
         names = {"mention": "📣 멘션왕", "link": "🔗 링크왕", "image": "🖼️ 사진왕", "emoji": "😂 이모지왕"}
-
         for cat, entries in hidden_scores.items():
-            if not entries:
-                continue
-            top_uid, top_count = sorted(entries, key=lambda x: -x[1])[0]
-            hidden_msg += f"\n{names[cat]}: <@{top_uid}> ({top_count}회)"
+            if entries:
+                top_uid, top_count = sorted(entries, key=lambda x: -x[1])[0]
+                if top_count > 0:
+                    user = await bot.fetch_user(top_uid)
+                    hidden_msg += f"\n{names[cat]}: {user.name} ({top_count}회)"
 
         msg += hidden_msg
 
+        # ✅ 채널별 왕 출력
+        channel_king_msg = "\n\n💬 채널별 왕 🏆"
+        header = sheet.row_values(1)
+        channel_names = header[6:]  # H열 이후
 
+        for ch_name in channel_names:
+            top_uid = None
+            top_count = -1
+
+            for row in records:
+                try:
+                    uid = int(float(row.get("유저 ID", 0)))
+                    count = int(str(row.get(ch_name, 0)).strip())
+                    if count > top_count:
+                        top_uid = uid
+                        top_count = count
+                except:
+                    continue
+
+            if top_uid and top_count > 0:
+                user = await bot.fetch_user(top_uid)
+                channel_king_msg += f"\n#{ch_name}: {user.name} ({top_count}개)"
+
+        msg += channel_king_msg
 
         await channel.send(msg)
 
-        # ✅ 로컬 캐시 초기화
+        # ✅ 캐시 초기화
         for key in list(message_log.keys()):
             if f"-{year}-{month}" in key:
                 del message_log[key]
         save_data(message_log)
 
-       
-        # ✅ Google Sheets 전체 초기화 (헤더 제외 삭제)
-        sheet.batch_clear(["A2:ZZ"])  # A열~G열 2행 아래 전부 제거
-        print("✅ 시트 전체 초기화 완료 (헤더 제외)")
+        # ✅ 백업 시트 생성
+        backup_title = f"{year}년 {month}월"
+        try:
+            for ws in spreadsheet.worksheets():
+                if ws.title == backup_title:
+                    spreadsheet.del_worksheet(ws)
+                    break
+        except Exception as e:
+            print(f"❗ 기존 백업 시트 삭제 실패: {e}")
 
+        sheet.duplicate(new_sheet_name=backup_title)
+        print(f"✅ 시트 백업 완료: {backup_title}")
+
+        # ✅ Sheet1 초기화
+        sheet.batch_clear(["A2:ZZ"])
+        print("✅ Sheet1 초기화 완료 (헤더 제외)")
 
     except Exception as e:
         print(f"❗ send_monthly_stats 에러 발생: {e}")
         traceback.print_exc()
-
-
 
 # ✅ 공익근무표 기능
 duty_cycle = ["주간", "야간", "비번", "휴무"]
