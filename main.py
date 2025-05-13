@@ -137,7 +137,7 @@ async def on_message(message):
     year_month = f"{message.author.id}-{now.year}-{now.month}"
 
     if year_month not in detail_log:
-        detail_log[year_month] = {"mention": 0, "link": 0, "image": 0, "emoji": 0}
+        detail_log[year_month] = {"mention": 0, "link": 0, "image": 0}
 
     detail_log[year_month]["mention"] += message.content.count("@")
     if "http://" in message.content or "https://" in message.content:
@@ -146,8 +146,6 @@ async def on_message(message):
         for att in message.attachments:
             if any(att.filename.lower().endswith(ext) for ext in ["jpg", "jpeg", "png", "gif", "webp"]):
                 detail_log[year_month]["image"] += 1
-    emoji_matches = re.findall(r"<a?:\\w+:\\d+>", message.content)
-    detail_log[year_month]["emoji"] += len(emoji_matches)
 
     if year_month not in message_log:
         message_log[year_month] = {"total": 0}
@@ -159,6 +157,12 @@ async def on_message(message):
 
 # ✅ 캐시를 구글시트에 합산 저장
 async def sync_cache_to_sheet():
+    def safe_int(val):
+        try:
+            return int(str(val).strip())
+        except:
+            return 0
+    
     try:
         sheet = get_sheet()
         now = datetime.now()
@@ -191,17 +195,15 @@ async def sync_cache_to_sheet():
                 row_num, current_total = existing_data[user_id]
                 new_total = current_total + total_count
                 existing_row = records[row_num - 2]
-                mention_total = int(existing_row.get("멘션수", 0)) + stats.get("mention", 0)
-                link_total = int(existing_row.get("링크수", 0)) + stats.get("link", 0)
-                image_total = int(existing_row.get("이미지수", 0)) + stats.get("image", 0)
-                emoji_total = int(existing_row.get("이모지수", 0)) + stats.get("emoji", 0)
-
+                mention_total = safe_int(existing_row.get("멘션수", 0)) + stats.get("mention", 0)
+                link_total = safe_int(existing_row.get("링크수", 0)) + stats.get("link", 0)
+                image_total = safe_int(existing_row.get("이미지수", 0)) + stats.get("image", 0)
+               
                 update_data.extend([
                     {"range": f"C{row_num}", "values": [[new_total]]},
                     {"range": f"D{row_num}", "values": [[mention_total]]},
                     {"range": f"E{row_num}", "values": [[link_total]]},
                     {"range": f"F{row_num}", "values": [[image_total]]},
-                    {"range": f"G{row_num}", "values": [[emoji_total]]},
                 ])
 
             else:
@@ -214,7 +216,7 @@ async def sync_cache_to_sheet():
                     stats.get("mention", 0),
                     stats.get("link", 0),
                     stats.get("image", 0),
-                    stats.get("emoji", 0),
+                   
                 ]
                 sheet.append_row(row)
 
@@ -327,23 +329,23 @@ async def send_monthly_stats():
             msg += f"\n🎉 지난달 1등은 <@{top_id}>님입니다! 모두 축하해주세요 🎉"
 
         # ✅ 히든 랭킹 출력
-        hidden_scores = {"mention": [], "link": [], "image": [], "emoji": []}
+        hidden_scores = {"mention": [], "link": [], "image": []}
         for row in records:
             try:
                 uid = int(float(row.get("유저 ID", 0)))
                 mention = int(row.get("멘션", 0))
                 link = int(row.get("링크", 0))
                 image = int(row.get("이미지", 0))
-                emoji = int(row.get("이모지", 0))
+               
                 hidden_scores["mention"].append((uid, mention))
                 hidden_scores["link"].append((uid, link))
                 hidden_scores["image"].append((uid, image))
-                hidden_scores["emoji"].append((uid, emoji))
+               
             except:
                 continue
 
         hidden_msg = "\n\n💡 히든 랭킹 🕵️"
-        names = {"mention": "📣 멘션왕", "link": "🔗 링크왕", "image": "🖼️ 사진왕", "emoji": "😂 이모지왕"}
+        names = {"mention": "📣 멘션왕", "link": "🔗 링크왕", "image": "🖼️ 사진왕"}
         for cat, entries in hidden_scores.items():
             if entries:
                 top_uid, top_count = sorted(entries, key=lambda x: -x[1])[0]
