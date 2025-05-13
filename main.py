@@ -231,9 +231,7 @@ async def sync_cache_to_sheet():
 
             del message_log[key]
 
-        if update_data:
-            sheet.batch_update(update_data, value_input_option="USER_ENTERED")
-
+      
         save_data(message_log)
 
                 # ✅ 초특급미녀 채널 누적 저장
@@ -255,6 +253,9 @@ async def sync_cache_to_sheet():
             if f"-{year}-{month}" in key:
                 del detail_log[key]
 
+        if update_data:
+            sheet.batch_update(update_data, value_input_option="USER_ENTERED")
+    
     except Exception as e:
         print(f"❗ sync_cache_to_sheet 에러: {e}")
         traceback.print_exc()
