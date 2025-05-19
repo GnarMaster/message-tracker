@@ -633,23 +633,22 @@ async def 뱀띠운세(interaction: discord.Interaction):
 
 
 async def get_snake_fortune_nate():
-    url = "https://fortune.nate.com/contents/freeunse/dailyjiji.nate"
+    url = "https://fortune.nate.com/contents/freeunse/freeunseview.nate"
+    data = {
+        "jijiPage": "4",     # 띠별 운세 페이지
+        "jijiPara": "05",    # 뱀띠 코드
+    }
+
     async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
+        async with session.post(url, data=data) as resp:
             html = await resp.text()
             soup = BeautifulSoup(html, "html.parser")
 
-            # 전체 운세 중 '뱀띠운세'가 있는 td 영역 찾기
-            img_tag = soup.find("img", alt="뱀띠")
-            if not img_tag:
-                return "😢 '뱀띠' 이미지를 찾을 수 없어요."
+            td_tag = soup.find("td", class_="font_t")
+            if td_tag:
+                return f"🐍 오늘의 뱀띠 운세\n\n{td_tag.get_text(strip=True)}"
+            return "😢 운세 텍스트를 찾을 수 없어요."
 
-            # 해당 이미지에서 가까운 <td class="font_t"> 찾아감
-            td = img_tag.find_parent("table").find_next("td", class_="font_t")
-            if not td:
-                return "😢 뱀띠 운세 텍스트를 찾을 수 없어요."
-
-            return f"🐍 오늘의 뱀띠 운세\n\n{td.get_text(strip=True)}"
 
 
 
