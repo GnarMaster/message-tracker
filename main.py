@@ -647,9 +647,10 @@ async def get_snake_fortune_nate():
         async with session.post(url, data=data) as resp:
             html = await resp.text()
 
-            # 테스트용 출력 (원하면 잠시 켜둬도 됨)
-            # with open("debug.html", "w", encoding="utf-8") as f:
-            #     f.write(html)
+            print("========== [HTML RESPONSE SAMPLE] ==========")
+            print(html[:1000])  # 처음 1000자만 출력 (너무 길면 잘림)
+            print("============================================")
+
 
             soup = BeautifulSoup(html, "html.parser")
             td_tag = soup.find("td", class_="font_t")
