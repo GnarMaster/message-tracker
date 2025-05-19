@@ -639,20 +639,13 @@ async def get_snake_fortune_nate():
             html = await resp.text()
             soup = BeautifulSoup(html, "html.parser")
 
-            title_tag = soup.find("strong", string=lambda t: "뱀띠운세" in t)
-            if not title_tag:
-                return "😢 오늘의 뱀띠 운세를 찾을 수 없어요."
+            # 뱀띠 운세가 담긴 td 태그 찾기
+            td_tag = soup.find("td", class_="font_t")
+            if td_tag:
+                text = td_tag.get_text(strip=True)
+                return f"🐍 오늘의 뱀띠 운세\n\n{text}"
 
-            parent = title_tag.find_parent("div")
-            if not parent:
-                return "😢 운세 정보를 가져올 수 없었어요."
-
-            paragraphs = parent.find_all("p")
-            if not paragraphs:
-                return f"🐍 오늘의 뱀띠 운세\n\n{parent.get_text(strip=True)}"
-            else:
-                combined_text = "\n".join(p.get_text(strip=True) for p in paragraphs)
-                return f"🐍 오늘의 뱀띠 운세\n\n{combined_text}"
+    return "😢 오늘의 뱀띠 운세를 찾을 수 없어요."
 
 
 
