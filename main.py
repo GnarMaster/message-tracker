@@ -635,19 +635,28 @@ async def 뱀띠운세(interaction: discord.Interaction):
 async def get_snake_fortune_nate():
     url = "https://fortune.nate.com/contents/freeunse/freeunseview.nate"
     data = {
-        "jijiPage": "4",     # 띠별 운세 페이지
-        "jijiPara": "05",    # 뱀띠 코드
+        "jijiPage": "4",     # 띠별 운세
+        "jijiPara": "05",    # 뱀띠
+    }
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
     }
 
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(headers=headers) as session:
         async with session.post(url, data=data) as resp:
             html = await resp.text()
-            soup = BeautifulSoup(html, "html.parser")
 
+            # 테스트용 출력 (원하면 잠시 켜둬도 됨)
+            # with open("debug.html", "w", encoding="utf-8") as f:
+            #     f.write(html)
+
+            soup = BeautifulSoup(html, "html.parser")
             td_tag = soup.find("td", class_="font_t")
             if td_tag:
                 return f"🐍 오늘의 뱀띠 운세\n\n{td_tag.get_text(strip=True)}"
             return "😢 운세 텍스트를 찾을 수 없어요."
+
 
 
 
