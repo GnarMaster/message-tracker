@@ -15,6 +15,9 @@ from oauth2client.service_account import ServiceAccountCredentials
 from discord import app_commands
 from pytz import timezone
 from gspread.utils import rowcol_to_a1
+import aiohttp
+from bs4 import BeautifulSoup
+
 
 LAST_RUN_FILE = "last_run.json"
 
@@ -621,6 +624,43 @@ async def send_birthday_congrats():
         print(f"❗ 생일 축하 에러 발생: {e}")
         import traceback
         traceback.print_exc()
+        
+@tree.command(name="뱀띠운세", description="오늘의 뱀띠 운세를 알려줍니다.")
+async def 뱀띠운세(interaction: discord.Interaction):
+    await interaction.response.defer()
+    msg = await get_snake_fortune_nate()
+    await interaction.followup.send(msg)
+
+
+async def get_snake_fortune_nate():
+    url = "https://fortune.nate.com/contents/freeunse/today03.unse"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            html = await resp.text()
+            soup = BeautifulSoup(html, "html.parser")
+
+            title_tag = soup.find("strong", string=lambda t: "뱀띠운세" in t)
+            if not title_tag:
+                return "😢 오늘의 뱀띠 운세를 찾을 수 없어요."
+
+            parent = title_tag.find_parent("div")
+            if not parent:
+                return "😢 운세 정보를 가져올 수 없었어요."
+
+            paragraphs = parent.find_all("p")
+            if not paragraphs:
+                return f"🐍 오늘의 뱀띠 운세\n\n{parent.get_text(strip=True)}"
+            else:
+                combined_text = "\n".join(p.get_text(strip=True) for p in paragraphs)
+                return f"🐍 오늘의 뱀띠 운세\n\n{combined_text}"
+
+
+
+
+
+
+
+
 
 # ✅ Render용 Flask 서버
 keep_alive()
