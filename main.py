@@ -17,6 +17,7 @@ from pytz import timezone
 from gspread.utils import rowcol_to_a1
 import aiohttp
 from bs4 import BeautifulSoup
+from apscheduler.triggers.cron import CronTrigger 
 
 
 LAST_RUN_FILE = "last_run.json"
