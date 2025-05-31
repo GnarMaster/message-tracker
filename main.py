@@ -225,6 +225,7 @@ async def sync_cache_to_sheet():
 
             else:
                 # 신규 유저 처리
+               # 신규 유저 처리
                 user = await bot.fetch_user(int(user_id))
                 row = [
                     user_id,
@@ -233,10 +234,8 @@ async def sync_cache_to_sheet():
                     stats.get("mention", 0),
                     stats.get("link", 0),
                     stats.get("image", 0),
-                   
                 ]
-                sheet.append_row(row)
-
+                sheet.append_row(row, value_input_option="USER_ENTERED", table_range="A1")  # A열부터 맞춰서 넣음
             del message_log[key]
 
       
@@ -436,8 +435,9 @@ async def send_monthly_stats():
         print(f"✅ 시트 백업 완료: {backup_title}")
 
         # ✅ Sheet1 초기화
-        sheet.batch_clear(["A2:ZZ"])
-        print("✅ Sheet1 초기화 완료 (헤더 제외)")
+        sheet.resize(rows=1)  # 헤더만 남기고 전체 삭제
+        print("✅ Sheet1 초기화 완료 (헤더만 남김)")
+
 
     except Exception as e:
         print(f"❗ send_monthly_stats 에러 발생: {e}")
