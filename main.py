@@ -135,6 +135,10 @@ async def on_ready():
         print("🕒 Google Sheets 기준 1일 15시 이후 실행 → send_monthly_stats()")
         await send_monthly_stats()
         set_last_run_date_to_sheet(today_str)
+    scheduler.add_job(
+    try_send_monthly_stats,
+    CronTrigger(day=1, hour=12, minute='0,5,10,15,20,25,30,35,40,45,50,55')
+    )
 
 
 
@@ -311,6 +315,19 @@ async def 이번달메시지(interaction: discord.Interaction):
             await interaction.followup.send("⚠️ 오류가 발생했습니다.")
         except:
             pass
+            
+# 매달1일 자동실행            
+async def try_send_monthly_stats():
+    now = datetime.now(timezone("Asia/Seoul"))
+    today_str = now.strftime("%Y-%m-%d")
+    last_run = get_last_run_date_from_sheet()
+
+    if today_str != last_run:
+        print(f"🕒 {now.strftime('%H:%M')} → send_monthly_stats() 실행 시도")
+        await send_monthly_stats()
+        set_last_run_date_to_sheet(today_str)
+    else:
+        print(f"✅ {now.strftime('%H:%M')} - 이미 실행됨 ({last_run}), 생략")
 
 # ✅ 매달 1일 1등 축하
 async def send_monthly_stats():
