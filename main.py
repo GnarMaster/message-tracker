@@ -434,6 +434,19 @@ async def send_monthly_stats():
         sheet.duplicate(new_sheet_name=backup_title)
         print(f"✅ 시트 백업 완료: {backup_title}")
 
+        try:
+            spreadsheet = sheet.spreadsheet
+            worksheets = spreadsheet.worksheets()
+            for i, ws in enumerate(worksheets):
+                if ws.title == backup_title:
+                    spreadsheet.reorder_worksheets(
+                        worksheets[:i] + worksheets[i+1:] + [ws]
+                    )
+                    print(f"✅ 백업 시트를 맨 뒤로 이동 완료: {backup_title}")
+                    break
+        except Exception as e:
+            print(f"❗ 백업 시트 이동 실패: {e}")
+        
         # ✅ Sheet1 초기화
         sheet.resize(rows=1)  # 헤더만 남기고 전체 삭제
         print("✅ Sheet1 초기화 완료 (헤더만 남김)")
