@@ -378,9 +378,9 @@ async def send_monthly_stats():
         for row in records:
             try:
                 uid = int(float(row.get("유저 ID", 0)))
-                mention = int(row.get("멘션", 0))
-                link = int(row.get("링크", 0))
-                image = int(row.get("이미지", 0))
+                mention = int(row.get("멘션수", 0))
+                link = int(row.get("링크수", 0))
+                image = int(row.get("이미지수", 0))
                
                 hidden_scores["mention"].append((uid, mention))
                 hidden_scores["link"].append((uid, link))
