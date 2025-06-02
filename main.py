@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup
 from apscheduler.triggers.cron import CronTrigger 
 
 
+
 LAST_RUN_FILE = "last_run.json"
 
 # 이번달랭킹 실행했는지 확인하는 함수
