@@ -76,7 +76,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
-SPECIAL_CHANNEL_ID = 1006076028252340274  # 초특급미녀 채널 ID
+SPECIAL_CHANNEL_ID = 1192514064035885118  # 릴스 채널 ID
 channel_special_log = {}  # {userID-YYYY-M: count}
 def safe_int(val):
     try:
@@ -242,16 +242,16 @@ async def sync_cache_to_sheet():
       
         save_data(message_log)
 
-                # ✅ 초특급미녀 채널 누적 저장
+                # ✅ 릴스 채널 누적 저장
         for key, count in list(channel_special_log.items()):
             user_id, y, m = key.split('-')
             if int(y) != year or int(m) != month:
                 continue
             if user_id in existing_data:
                 row_num, _ = existing_data[user_id]
-                current_val = safe_int(records[row_num - 2].get("초특급미녀", 0))
+                current_val = safe_int(records[row_num - 2].get("릴스", 0))
                 update_data.append({
-                    "range": f"H{row_num}",
+                    "range": f"I{row_num}",
                     "values": [[current_val + count]],
                 })
             # 캐시 삭제
@@ -400,16 +400,16 @@ async def send_monthly_stats():
                     hidden_msg += f"\n{names[cat]}: {user.name} ({top_count}회)"
         msg += hidden_msg
 
-        # ✅ 초특급미녀 채널에서 가장 많이 채팅한 사람 찾기
+        # ✅ 릴스 채널에서 가장 많이 채팅한 사람 찾기
         try:
-            top_special = sorted(records, key=lambda row: -safe_int(row.get("초특급미녀", 0)))[0]
-            top_special_count = safe_int(top_special.get("초특급미녀", 0))
+            top_special = sorted(records, key=lambda row: -safe_int(row.get("릴스", 0)))[0]
+            top_special_count = safe_int(top_special.get("릴스", 0))
             if top_special_count > 0:
                 special_uid = int(float(top_special.get("유저 ID", 0)))
                 special_user = await bot.fetch_user(special_uid)
                 msg += f"\n\n💋 미녀탐색가: {special_user.name} ({top_special_count}회)"
         except Exception as e:
-            print(f"❗ 미녀탐색가 랭킹 에러: {e}")
+            print(f"❗ 릴스 랭킹 에러: {e}")
 
     
 
