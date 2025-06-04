@@ -407,7 +407,7 @@ async def send_monthly_stats():
             if top_special_count > 0:
                 special_uid = int(float(top_special.get("유저 ID", 0)))
                 special_user = await bot.fetch_user(special_uid)
-                msg += f"\n\n💋 미녀탐색가: {special_user.name} ({top_special_count}회)"
+                msg += f"\n\n✨ 릴스파인더: {special_user.name} ({top_special_count}회)"
         except Exception as e:
             print(f"❗ 릴스 랭킹 에러: {e}")
 
