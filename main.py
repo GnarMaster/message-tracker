@@ -460,8 +460,7 @@ async def send_monthly_stats():
 
 # ✅ 공익근무표 기능
 duty_cycle = ["주간", "야간", "비번", "휴무"]
-start_dates = {
-    "우재민": datetime(2025, 4, 15),
+start_dates = {  
     "임현수": datetime(2025, 4, 14),
     "정재선": datetime(2025, 4, 12),
     "김 혁": datetime(2025, 4, 13),
