@@ -1,54 +1,25 @@
 from keep_alive import keep_alive
-
-
-
 import re
-
 import discord
-
 import traceback
-
 import random
-
 from discord.ext import commands
-
 from datetime import datetime, timedelta
-
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
 import os
-
 from dotenv import load_dotenv
-
 import json
-
 import gspread
-
 from oauth2client.service_account import ServiceAccountCredentials
-
 from discord import app_commands
-
 from pytz import timezone
-
 from gspread.utils import rowcol_to_a1
-
 import aiohttp
-
 from bs4 import BeautifulSoup
-
 from apscheduler.triggers.cron import CronTrigger 
 
 
-
-
-
-
-
-
-
 LAST_RUN_FILE = "last_run.json"
-
-
 
 # 이번달랭킹 실행했는지 확인하는 함수
 
