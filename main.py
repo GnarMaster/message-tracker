@@ -334,7 +334,7 @@ async def 이번달메시지(interaction: discord.Interaction):
         results = []
 
         for row in records:
-            uid_raw = row.get("유저 ID", "0")
+            uid_raw = str(row.get("유저 ID", "0")).strip()
             try:
                 # 시트에서 읽은 유저 ID는 string 타입이어야 안전하며, int로 변환할 때 오류 방지
                 uid = int(uid_raw) if uid_raw.isdigit() else 0
