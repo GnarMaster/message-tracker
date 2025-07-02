@@ -5,7 +5,8 @@ import traceback
 import random
 from discord.ext import commands
 from datetime import datetime, timedelta
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.schedulers.asyncio
+import AsyncIOScheduler
 import os
 from dotenv import load_dotenv
 import json
@@ -17,7 +18,6 @@ from gspread.utils import rowcol_to_a1
 import aiohttp
 from bs4 import BeautifulSoup
 from apscheduler.triggers.cron import CronTrigger 
-
 
 LAST_RUN_FILE = "last_run.json"
 
