@@ -519,7 +519,6 @@ async def send_monthly_stats():
 duty_cycle = ["주간", "야간", "비번", "휴무"]
 start_dates = {
     "임현수": datetime(2025, 4, 14),
-    "정재선": datetime(2025, 4, 12),
     "김 혁": datetime(2025, 4, 13),
 }
 
