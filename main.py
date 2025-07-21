@@ -368,17 +368,20 @@ async def 이번달메시지(interaction: discord.Interaction):
             pass
 
 # 매달1일 자동실행
+# 매달 1일 자동 실행 (12시부터 55분까지 매 5분마다 시도됨)
 async def try_send_monthly_stats():
     now = datetime.now(timezone("Asia/Seoul"))
     today_str = now.strftime("%Y-%m-%d")
     last_run = get_last_run_date_from_sheet()
 
-    if today_str != last_run:
-        print(f"🕒 {now.strftime('%H:%M')} → send_monthly_stats() 실행 시도")
+    # 1일이며, 아직 실행 기록이 없거나, 오늘 날짜와 다를 경우 실행
+    if now.day == 1 and today_str != last_run:
+        print(f"📆 {today_str} 기준 자동 실행 조건 충족 → send_monthly_stats() 실행")
         await send_monthly_stats()
         set_last_run_date_to_sheet(today_str)
     else:
-        print(f"✅ {now.strftime('%H:%M')} - 이미 실행됨 ({last_run}), 생략")
+        print(f"⏩ 자동 실행 조건 불충분 (오늘: {today_str}, 마지막 실행: {last_run})")
+
 
 # ✅ 매달 1일 1등 축하
 async def send_monthly_stats():
