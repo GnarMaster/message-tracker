@@ -115,7 +115,6 @@ async def on_ready():
     print(f"✅ 봇 로그인 완료: {bot.user}")
     await tree.sync()
     scheduler = AsyncIOScheduler(timezone=timezone("Asia/Seoul"))
-    scheduler.add_job(send_monthly_stats, 'cron', day=1, hour=0, minute=0)
     scheduler.add_job(send_birthday_congrats, 'cron', hour=0, minute=0)
     # ✅ 1분마다 실행되는 작업 등록
     @scheduler.scheduled_job('interval', minutes=1)
@@ -130,14 +129,6 @@ async def on_ready():
     today_str = now.strftime("%Y-%m-%d")
     last_run = get_last_run_date_from_sheet()
 
-    if now.day == 1 and now.hour >= 15 and today_str != last_run:
-        print("🕒 Google Sheets 기준 1일 15시 이후 실행 → send_monthly_stats()")
-        await send_monthly_stats()
-        set_last_run_date_to_sheet(today_str)
-    scheduler.add_job(
-        try_send_monthly_stats,
-        CronTrigger(day=1, hour=12, minute='0,5,10,15,20,25,30,35,40,45,50,55')
-    )
 
 # ✅ 채팅 감지
 @bot.event
@@ -323,28 +314,24 @@ async def sync_cache_to_sheet():
 async def 이번달메시지(interaction: discord.Interaction):
     try:
         await interaction.response.defer()
-
-        await sync_cache_to_sheet() # ✅ 캐시 먼저 업로드
+        await sync_cache_to_sheet()
 
         sheet = get_sheet()
         records = sheet.get_all_records()
 
         now = datetime.now()
         year, month = now.year, now.month
-
         results = []
 
         for row in records:
             uid_raw = str(row.get("유저 ID", "0")).strip()
-            try:
-                # 시트에서 읽은 유저 ID는 string 타입이어야 안전하며, int로 변환할 때 오류 방지
-                uid = int(uid_raw) if uid_raw.isdigit() else 0
-            except ValueError: # float으로 변환 시도하던 부분 제거 (이미 text로 설정했으니 불필요)
-                continue
-
-            count = int(str(row.get("누적메시지수", 0)).strip())
+            uid = int(uid_raw) if uid_raw.isdigit() else 0
+            count = safe_int(row.get("누적메시지수", 0))
             username = row.get("닉네임", f"(ID:{uid})")
-            results.append((uid, count, username))
+
+            # ✅ 메시지 수 0인 경우 제외
+            if count > 0:
+                results.append((uid, count, username))
 
         if not results:
             await interaction.followup.send("이번 달에는 메시지가 없어요 😢")
@@ -359,13 +346,13 @@ async def 이번달메시지(interaction: discord.Interaction):
         await interaction.followup.send(msg)
 
     except Exception as e:
-        print("❗ /이번달메시지 에러:")
-        import traceback
+        print("❗ /이번달메시지 에러:", e)
         traceback.print_exc()
         try:
             await interaction.followup.send("⚠️ 오류가 발생했습니다.")
         except:
             pass
+
 
 # 매달1일 자동실행
 # 매달 1일 자동 실행 (12시부터 55분까지 매 5분마다 시도됨)
@@ -381,6 +368,7 @@ async def try_send_monthly_stats():
         set_last_run_date_to_sheet(today_str)
     else:
         print(f"⏩ 자동 실행 조건 불충분 (오늘: {today_str}, 마지막 실행: {last_run})")
+
 
 
 # ✅ 매달 1일 1등 축하
@@ -522,8 +510,7 @@ async def send_monthly_stats():
 # ✅ 공익근무표 기능
 duty_cycle = ["주간", "야간", "비번", "휴무"]
 start_dates = {
-    "임현수": datetime(2025, 4, 14),
-    "김 혁": datetime(2025, 4, 13),
+    "임현수": datetime(2025, 4, 14)
 }
 
 @tree.command(name="공익근무표", description="오늘의 공익 근무표를 확인합니다.")
