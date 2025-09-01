@@ -699,27 +699,18 @@ async def send_birthday_congrats():
         import traceback
         traceback.print_exc()
 
-@tree.command(name="랭킹정산", description="이번 달 메시지 랭킹을 수동으로 정산합니다. (관리자용)")
+@tree.command(name="랭킹정산", description="이번 달 메시지 랭킹을 수동으로 정산합니다. (고윤서전용)")
 async def 랭킹정산(interaction: discord.Interaction):
-    try:
-        await interaction.response.defer()
+    admin_id = 648091499887591424  # 👉 본인 Discord ID로 교체
+    if interaction.user.id != admin_id:
+        await interaction.response.send_message("❌ 이 명령어는 고윤서만 사용할 수 있어요!", ephemeral=True)
+        return
 
-        today_str = datetime.now(timezone("Asia/Seoul")).strftime("%Y-%m-%d")
-        last_run = get_last_run_date_from_sheet()
+    await interaction.response.defer()
+    # 원래 랭킹정산 코드 실행
+    await send_monthly_stats()
+    await interaction.followup.send("📊 랭킹 정산이 완료되었습니다.")
 
-        if today_str == last_run:
-            await interaction.followup.send(f"✅ 이미 오늘({today_str}) 실행되었습니다.")
-            return
-
-        await send_monthly_stats()
-        set_last_run_date_to_sheet(today_str)
-        await interaction.followup.send("📊 랭킹 정산이 완료되었습니다.")
-
-    except Exception as e:
-        print(f"❗ /랭킹정산 에러 발생: {e}")
-        import traceback
-        traceback.print_exc()
-        await interaction.followup.send("⚠️ 랭킹 정산 중 오류가 발생했습니다.")
 
 # ✅ Render용 Flask 서버
 keep_alive()
