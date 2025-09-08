@@ -239,7 +239,7 @@ async def sync_cache_to_sheet():
                 print(f"❗ Discord 유저 객체 가져오기 오류 (ID: {user_id}): {e}")
                 traceback.print_exc()
                 continue
-
+ 
             if user_id in existing_data:
                 # 기존 사용자 데이터 업데이트
                row_num, current_total_messages, current_nickname_from_sheet, current_mentions, current_links, current_images, current_reels, current_level, current_inlevel_exp = existing_data[user_id]
