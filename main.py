@@ -386,7 +386,8 @@ async def 이번달메시지(interaction: discord.Interaction):
 async def 내레벨(interaction: discord.Interaction):
     try:
         await interaction.response.defer()  # 공개 출력 (ephemeral 제거)
-
+        await sync_cache_to_sheet()
+        
         sheet = get_sheet()
         records = sheet.get_all_records()
 
