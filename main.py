@@ -82,6 +82,7 @@ def safe_int(val):
     except:
         return 0
 
+
 # ✅ Google Sheets 연결 함수
 def get_sheet():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -106,7 +107,7 @@ def save_data(data):
 # ✅ message_log 초기화
 message_log = {}
 detail_log = {}
-
+user_levels = {}
 # ✅ 서버 시작시
 @bot.event
 async def on_ready():
@@ -163,6 +164,9 @@ async def on_message(message):
     save_data(message_log)
     await bot.process_commands(message)
 
+def exp_needed_for_next_level(level: int) -> int:
+    return int(0.153 * (level + 1) ** 2 + 1.89 * (level + 1))
+
 # ✅ 캐시를 구글시트에 합산 저장
 async def sync_cache_to_sheet():
     try:
@@ -191,10 +195,11 @@ async def sync_cache_to_sheet():
                 images = safe_int(row.get("이미지수", 0))
                 reels = safe_int(row.get("릴스", 0))
                 current_nickname = str(row.get("닉네임", "")).strip()
-
+                current_level = safe_int(row.get("레벨",1))
+                current_inlevel_exp = safe_int(row.get("현재레벨경험치",0))
                 # 유효한 user_id_from_sheet 일 때만 저장
                 if user_id_from_sheet:
-                    existing_data[user_id_from_sheet] = (idx, total_messages, current_nickname, mentions, links, images, reels)
+                    existing_data[user_id_from_sheet] = (idx, total_messages, current_nickname, mentions, links, images, reels, current_level, current_inlevel_exp)
             except Exception as e:
                 print(f"❗ Google 시트 레코드 처리 중 오류 발생 (ID: {user_id_from_sheet}, 행: {idx}): {e}")
                 traceback.print_exc()
@@ -250,28 +255,50 @@ async def sync_cache_to_sheet():
                 new_images = current_images + image_from_cache
                 new_reels = current_reels + reels_from_cache # 릴스도 합산
 
+                new_level = current_level
+                new_inlevel_exp = current_inlevel_exp + total_messages_from_cache
+                
+                # ✅ 레벨업 체크
+                while new_level < 100 and new_inlevel_exp >= exp_needed_for_next_level(new_level):
+                    need = exp_needed_for_next_level(new_level)
+                    new_inlevel_exp -= need
+                    new_level += 1
+                    await bot.get_channel(CHANNEL_ID).send(
+                        f"🎉 <@{user_id}> 님이 **레벨 {new_level}** 달성!"
+                    )
+
+                
                 update_data.extend([
                     {"range": f"C{row_num}", "values": [[new_total_messages]]},
                     {"range": f"D{row_num}", "values": [[new_mentions]]},
                     {"range": f"E{row_num}", "values": [[new_links]]},
                     {"range": f"F{row_num}", "values": [[new_images]]},
                     {"range": f"I{row_num}", "values": [[new_reels]]}, # 릴스 업데이트
+                    {"range": f"J{row_num}", "values": [[new_level]]},
+                    {"range": f"K{row_num}", "values": [[new_inlevel_exp]]}
                 ])
                 # 업데이트된 데이터는 existing_data에 반영하여 다음 루프에서 사용 가능하게 할 수도 있지만,
                 # 1분마다 캐시를 비우므로 큰 문제는 아님.
-
+               
+                user_levels[user_id] = new_level
             else:
                 # 신규 유저 처리 - append_rows를 위해 리스트에 추가
+                exp = total_messages_from_cache
+                level = 1
+                inlevel_exp = exp
+            
                 new_users_to_append.append([
                     user_id,
                     user_obj.name,
-                    total_messages_from_cache, # 신규 유저는 현재 캐시 값 그대로
+                    exp, # 신규 유저는 현재 캐시 값 그대로
                     mention_from_cache,
                     link_from_cache,
                     image_from_cache,
                     0, # G열 (비워둠)
                     0, # H열 (비워둠)
-                    reels_from_cache # 릴스 데이터
+                    reels_from_cache, # 릴스 데이터
+                    level,
+                    inlevel_exp
                 ])
 
             # 처리된 캐시 키를 삭제 목록에 추가
