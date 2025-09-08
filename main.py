@@ -40,6 +40,7 @@ def set_last_run_date_to_sheet(date_str):
         print(f"✅ Google 시트에 last_run = {date_str} 기록됨")
     except Exception as e:
         print(f"❗ set_last_run_date_to_sheet 에러: {e}")
+        
 
 # 생일축하했는지 확인하는 함수
 def get_last_birthday_run():
