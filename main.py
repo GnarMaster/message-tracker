@@ -242,7 +242,7 @@ async def sync_cache_to_sheet():
 
             if user_id in existing_data:
                 # 기존 사용자 데이터 업데이트
-                row_num, current_total_messages, current_nickname_from_sheet, current_mentions, current_links, current_images, current_reels = existing_data[user_id]
+               row_num, current_total_messages, current_nickname_from_sheet, current_mentions, current_links, current_images, current_reels, current_level, current_inlevel_exp = existing_data[user_id]
 
                 # 닉네임 변경 시 업데이트 목록에 추가
                 if current_nickname_from_sheet != user_obj.name:
