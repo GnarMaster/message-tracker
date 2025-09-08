@@ -380,7 +380,38 @@ async def 이번달메시지(interaction: discord.Interaction):
             await interaction.followup.send("⚠️ 오류가 발생했습니다.")
         except:
             pass
+            
+# ✅ 내레벨 명령어
+@tree.command(name="내레벨", description="현재 나의 레벨과 경험치를 확인합니다.")
+async def 내레벨(interaction: discord.Interaction):
+    try:
+        await interaction.response.defer()  # 공개 출력 (ephemeral 제거)
 
+        sheet = get_sheet()
+        records = sheet.get_all_records()
+
+        user_id = str(interaction.user.id)
+        username = interaction.user.name
+
+        # 유저 찾기
+        for row in records:
+            if str(row.get("유저 ID", "")).strip() == user_id:
+                level = safe_int(row.get("레벨", 1))
+                exp = safe_int(row.get("현재레벨경험치", 0))
+                need = exp_needed_for_next_level(level)
+
+                msg = (f"👤 **{username}** 님의 현재 상태\n"
+                       f"📊 레벨: **{level}**\n"
+                       f"⭐ 경험치: {exp} / {need}")
+                await interaction.followup.send(msg)
+                return
+
+        # 만약 데이터가 없을 때
+        await interaction.followup.send("⚠️ 아직 기록된 데이터가 없어요.")
+
+    except Exception as e:
+        print(f"❗ /내레벨 에러: {e}")
+        await interaction.followup.send("⚠️ 정보를 불러오는 데 실패했습니다.")
 
 # 매달1일 자동실행
 # 매달 1일 자동 실행 (12시부터 55분까지 매 5분마다 시도됨)
