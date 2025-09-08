@@ -245,8 +245,8 @@ async def sync_cache_to_sheet():
                row_num, current_total_messages, current_nickname_from_sheet, current_mentions, current_links, current_images, current_reels, current_level, current_inlevel_exp = existing_data[user_id]
 
                 # 닉네임 변경 시 업데이트 목록에 추가
-                if current_nickname_from_sheet != user_obj.name:
-                    update_data.append({"range": f"B{row_num}", "values": [[user_obj.name]]})
+                    if current_nickname_from_sheet != user_obj.name:
+                        update_data.append({"range": f"B{row_num}", "values": [[user_obj.name]]})
 
                 # 누적 메시지 수 및 상세 통계 업데이트 (현재 시트 값 + 캐시 값)
                 new_total_messages = current_total_messages + total_messages_from_cache
