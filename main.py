@@ -166,7 +166,18 @@ async def on_message(message):
     await bot.process_commands(message)
 
 def exp_needed_for_next_level(level: int) -> int:
-    return int(0.153 * (level + 1) ** 2 + 1.89 * (level + 1))
+    if level < 10:
+        return int(0.8 * (level ** 2) + 100)
+    elif level < 20:
+        return int(1.2 * (level ** 2) + 150)
+    elif level < 30:
+        return int(1.5 * (level ** 2) + 200)
+    elif level < 50:
+        return int(1.2 * (level ** 2) + 500)
+    else:
+        # 50 이상 → 급격히 상승
+        return int(5 * (level ** 2) + level * 20 + 1000)
+
 
 # ✅ 캐시를 구글시트에 합산 저장
 async def sync_cache_to_sheet():
