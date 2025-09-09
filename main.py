@@ -136,12 +136,13 @@ async def on_ready():
     global message_log
     message_log = load_data()
     print(f"✅ 봇 로그인 완료: {bot.user}")
-    await tree.sync()
 
-    for filename in os.listdir("./cogs"):
+     for filename in os.listdir("./cogs"):
         if filename.endswith(".py"):
             await bot.load_extension(f"cogs.{filename[:-3]}")
-    
+            
+    await tree.sync()
+
     scheduler = AsyncIOScheduler(timezone=timezone("Asia/Seoul"))
     scheduler.add_job(send_birthday_congrats, 'cron', hour=0, minute=0)
     # ✅ 1분마다 실행되는 작업 등록
