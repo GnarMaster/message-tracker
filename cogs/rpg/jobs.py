@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ui import View, Select
 
-from main import get_sheet, safe_int, get_job_icon
+from utils import get_sheet, safe_int, get_job_icon
 
 
 class JobSelectView(View):
