@@ -23,10 +23,16 @@ class Steal(commands.Cog):
         records = log_sheet.get_all_records()
         for row in reversed(records):
             if str(row.get("유저 ID", "")) == user_id and row.get("스킬명") == skill_name:
-                try:
-                    return datetime.strptime(row.get("사용일시", ""), "%Y-%m-%d %H:%M:%S")
-                except:
+                date_str = row.get("사용일시") or row.get("사용 일시")
+                if not date_str:
                     return None
+                try:
+                    return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    try:
+                        return datetime.strptime(date_str, "%Y-%m-%d %H:%M")
+                    except:
+                        return None
         return None
 
     # ✅ 스킬 사용 로그 기록
@@ -35,8 +41,8 @@ class Steal(commands.Cog):
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_sheet.append_row([now_str, user_id, username, skill_name, note])
 
-    # ✅ 스틸 훔치는 양 계산 (확률 기반 + 레벨)
-    def get_steal_amount(self, level: int) -> int:
+    # ✅ 스틸 훔치는 기본값 계산
+    def get_steal_base(self) -> int:
         roll = random.uniform(0, 100)
 
         if roll <= 80:  # 1~10 (각 8%)
@@ -54,10 +60,7 @@ class Steal(commands.Cog):
                 base = 100
             else:                          # 0.5%
                 base = 50
-
-        if base == 0:
-            return 0  # 실패 → 레벨 보정 없음
-        return base + level
+        return base
 
     # ✅ 명령어: 스틸
     @app_commands.command(
@@ -72,7 +75,7 @@ class Steal(commands.Cog):
             await interaction.response.send_message("❌ 자신을 스틸할 수는 없습니다!", ephemeral=True)
             return
 
-        # ⚡ 먼저 응답 예약 → 404 Unknown interaction 방지
+        # ⚡ 먼저 응답 예약
         await interaction.response.defer(ephemeral=False)
 
         # 최근 사용 기록 확인 (쿨타임 4시간)
@@ -111,19 +114,19 @@ class Steal(commands.Cog):
 
         # ✅ 훔칠 양 계산
         current_level = safe_int(user_data.get("레벨", 1))
-        steal_amount = self.get_steal_amount(current_level)
+        base = self.get_steal_base()
 
-        if steal_amount <= 0:
+        if base <= 0:
             # 실패 처리
             self.log_skill_use(user_id, interaction.user.name, "스틸", f"실패 (대상: {target.name})")
             await interaction.followup.send(
-                f"🥷 {interaction.user.name} 님이 {target.name} 님을 스틸하려 했지만 실패했습니다…"
+                f"🥷 {interaction.user.name} 님이 @ {target.mention} 님을 스틸하려 했지만 실패했습니다…"
             )
             return
 
-        # ✅ 경험치 갱신 (음수 허용)
-        new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - steal_amount
-        new_user_exp = safe_int(user_data.get("현재레벨경험치", 0)) + steal_amount
+        # ✅ 경험치 갱신
+        new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - base          # 상대는 base만 잃음
+        new_user_exp   = safe_int(user_data.get("현재레벨경험치", 0)) + (base + current_level)  # 나는 base+레벨 얻음
 
         sheet.update_cell(target_idx, 11, new_target_exp)
         sheet.update_cell(user_idx, 11, new_user_exp)
@@ -133,13 +136,14 @@ class Steal(commands.Cog):
             user_id,
             interaction.user.name,
             "스틸",
-            f"대상: {target.name}, {steal_amount} exp"
+            f"대상: {target.name}, {base} 잃음 / 자신: {base}+{current_level} = {base+current_level} 획득"
         )
 
         # ✅ 성공 메시지
         await interaction.followup.send(
-            f"🥷 {interaction.user.name} 님이 {target.name} 님을 스틸하였습니다! (**{steal_amount} exp**)\n"
-            f"💀 {target.name} 님의 현재 경험치: {new_target_exp}"
+            f"🥷 {interaction.user.name}님이 {target.mention} 님의 경험치를 스틸하였습니다!\n"
+            f"✨ {interaction.user.name} +{base+current_level} exp | "
+            f"💀 {target.name} -{base} exp (현재 경험치: {new_target_exp})"
         )
 
 async def setup(bot):
