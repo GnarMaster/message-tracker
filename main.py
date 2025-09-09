@@ -82,7 +82,12 @@ def safe_int(val):
         return int(str(val).strip())
     except:
         return 0
-
+        
+def safe_float(val):
+    try:
+        return float(str(val).strip())
+    except:
+        return 0.0
 
 # ✅ Google Sheets 연결 함수
 def get_sheet():
@@ -165,18 +170,18 @@ async def on_message(message):
     save_data(message_log)
     await bot.process_commands(message)
 
-def exp_needed_for_next_level(level: int) -> int:
+def exp_needed_for_next_level(level: int) -> float:
     if level < 10:
-        return int(0.8 * (level ** 2) + 100)
+        return 0.8 * (level ** 2) + 100
     elif level < 20:
-        return int(1.2 * (level ** 2) + 150)
+        return 1.2 * (level ** 2) + 150
     elif level < 30:
-        return int(1.5 * (level ** 2) + 200)
+        return 1.5 * (level ** 2) + 200
     elif level < 50:
-        return int(1.2 * (level ** 2) + 500)
+        return 1.2 * (level ** 2) + 500
     else:
         # 50 이상 → 급격히 상승
-        return int(5 * (level ** 2) + level * 20 + 1000)
+        return 5 * (level ** 2) + level * 20 + 1000
 
 
 # ✅ 캐시를 구글시트에 합산 저장
@@ -208,7 +213,7 @@ async def sync_cache_to_sheet():
                 reels = safe_int(row.get("릴스", 0))
                 current_nickname = str(row.get("닉네임", "")).strip()
                 current_level = safe_int(row.get("레벨",1))
-                current_inlevel_exp = safe_int(row.get("현재레벨경험치",0))
+                current_inlevel_exp = safe_float(row.get("현재레벨경험치",0))
                 # 유효한 user_id_from_sheet 일 때만 저장
                 if user_id_from_sheet:
                     existing_data[user_id_from_sheet] = (idx, total_messages, current_nickname, mentions, links, images, reels, current_level, current_inlevel_exp)
@@ -409,12 +414,12 @@ async def 내레벨(interaction: discord.Interaction):
         for row in records:
             if str(row.get("유저 ID", "")).strip() == user_id:
                 level = safe_int(row.get("레벨", 1))
-                exp = safe_int(row.get("현재레벨경험치", 0))
+                exp = safe_float(row.get("현재레벨경험치", 0))
                 need = exp_needed_for_next_level(level)
 
                 msg = (f"👤 **{username}** 님의 현재 상태\n"
                        f"📊 레벨: **{level}**\n"
-                       f"⭐ 경험치: {exp} / {need}")
+                       f"⭐ 경험치: {exp:.1f} / {need:.1f}")
                 await interaction.followup.send(msg)
                 return
 
