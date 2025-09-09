@@ -18,6 +18,8 @@ import aiohttp
 from bs4 import BeautifulSoup
 from apscheduler.triggers.cron import CronTrigger
 
+from utils import get_sheet, safe_int, get_job_icon
+
 LAST_RUN_FILE = "last_run.json"
 
 
@@ -76,13 +78,7 @@ tree = bot.tree
 
 SPECIAL_CHANNEL_ID = 1192514064035885118 # 릴스 채널 ID
 channel_special_log = {} # {userID-YYYY-M: count}
-
-def safe_int(val):
-    try:
-        return int(str(val).strip())
-    except:
-        return 0
-        
+   
 def safe_float(val):
     try:
         return float(str(val).strip())
@@ -94,25 +90,6 @@ def format_exp(value: float) -> str:
         return str(int(value))
     return f"{value:.1f}"    # 소숫점 1자리까지
 
-def get_job_icon(job: str) -> str:
-    icons = {
-        "백수": "🎖️",
-        "전사": "⚔️",
-        "마법사": "🔮",
-        "궁수": "🏹",
-        "도적": "🥷",
-        "특수": "🎭"
-    }
-    return icons.get(job, "🎖️")  # 혹시 없는 직업은 기본값 훈장
-
-
-# ✅ Google Sheets 연결 함수
-def get_sheet():
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds_dict = json.loads(os.getenv("GOOGLE_CREDS"))
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    client = gspread.authorize(creds)
-    return client.open("Discord_Message_Log").sheet1
 
 # ✅ 로컬 캐시
 DATA_FILE = "message_data.json"
