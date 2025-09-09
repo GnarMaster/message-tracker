@@ -120,7 +120,7 @@ class Steal(commands.Cog):
             # 실패 처리
             self.log_skill_use(user_id, interaction.user.name, "스틸", f"실패 (대상: {target.name})")
             await interaction.followup.send(
-                f"🥷 {interaction.user.name} 님이 @ {target.mention} 님을 스틸하려 했지만 실패했습니다…"
+                f"🥷 {interaction.user.name} 님이 {target.mention} 님을 스틸하려 했지만 실패했습니다…"
             )
             return
 
