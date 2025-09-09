@@ -142,8 +142,9 @@ async def on_ready():
         if filename.endswith(".py"):
             await bot.load_extension(f"cogs.{filename[:-3]}")
             
+    await bot.load_extension("cogs.rpg")        
     await tree.sync()
-
+   
     scheduler = AsyncIOScheduler(timezone=timezone("Asia/Seoul"))
     scheduler.add_job(send_birthday_congrats, 'cron', hour=0, minute=0)
     # ✅ 1분마다 실행되는 작업 등록
