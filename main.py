@@ -89,6 +89,22 @@ def safe_float(val):
     except:
         return 0.0
 
+def format_exp(value: float) -> str:
+    if value.is_integer():   # 값이 정수면
+        return str(int(value))
+    return f"{value:.1f}"    # 소숫점 1자리까지
+
+def get_job_icon(job: str) -> str:
+    icons = {
+        "백수": "🎖️",
+        "전사": "⚔️",
+        "마법사": "🔮",
+        "도적": "🥷",
+        "특수": "🎭"
+    }
+    return icons.get(job, "🎖️")  # 혹시 없는 직업은 기본값 훈장
+
+
 # ✅ Google Sheets 연결 함수
 def get_sheet():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -418,10 +434,13 @@ async def 내레벨(interaction: discord.Interaction):
                 exp = safe_float(row.get("현재레벨경험치", 0))
                 need = exp_needed_for_next_level(level)
                 job = row.get("직업","백수")
+                icon = get_job_icon(job)
+                exp_str = format_exp(exp)
+                
                 msg = (f"👤 **{username}** 님의 현재 상태\n"
                        f"📊 레벨: **{level}**\n"
-                       f"⭐ 경험치: {exp:.1f} / {need:.1f}\n"
-                       f"💼 직업: {job}")
+                       f"⭐ 경험치: {exp_str} / {need}\n"
+                       f"{icon} 직업: {job}")
                 await interaction.followup.send(msg)
                 return
 
