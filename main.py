@@ -287,7 +287,7 @@ async def sync_cache_to_sheet():
                     )
 
                     if new_level == 5:
-                        await bot.get_channel(CHNNEL_ID).send(
+                        await bot.get_channel(CHANNEL_ID).send(
                             f"⚔️ <@{user_id}> 님, 이제 `/전직` 명령어를 이용해 전직할 수 있어요!"
                         )
                 
