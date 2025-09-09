@@ -1,10 +1,10 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from discord.ui import View, Select
-
+from discord.ui import View
 
 from utils import get_sheet, safe_int, get_job_icon
+
 
 class JobSelectView(View):
     def __init__(self, row_idx: int, bot: commands.Bot, channel_id: int):
@@ -13,35 +13,32 @@ class JobSelectView(View):
         self.bot = bot
         self.channel_id = channel_id
 
-        self.add_item(
-            Select(
-                placeholder="전직할 직업을 선택하세요!",
-                min_values=1,
-                max_values=1,
-                options=[
-                    discord.SelectOption(label="전사", description="추가 경험치 10%", emoji="⚔️"),
-                    discord.SelectOption(label="마법사", description="특정 시간대 경험치 보너스", emoji="🔮"),
-                    discord.SelectOption(label="궁수", description="헤드샷! 일정 확률 경험치 2배", emoji="🏹"),
-                    discord.SelectOption(label="도적", description="하루 한번 경험치 스틸", emoji="🥷"),
-                    discord.SelectOption(label="특수", description="0.5~2.5배 랜덤 경험치", emoji="🎭"),
-                    
-                ]
-            )
-        )
-
-    @discord.ui.select()
-    async def select_callback(self, interaction: discord.Interaction, select):
+    @discord.ui.select(
+        placeholder="전직할 직업을 선택하세요!",
+        min_values=1,
+        max_values=1,
+        options=[
+            discord.SelectOption(label="전사", description="추가 경험치 10%", emoji="⚔️"),
+            discord.SelectOption(label="마법사", description="특정 시간대 경험치 보너스", emoji="🔮"),
+            discord.SelectOption(label="궁수", description="헤드샷! 일정 확률 경험치 2배", emoji="🏹"),
+            discord.SelectOption(label="도적", description="하루 한번 경험치 스틸", emoji="🥷"),
+            discord.SelectOption(label="특수", description="0.5~2.5배 랜덤 경험치", emoji="🎭"),
+        ]
+    )
+    async def select_callback(self, interaction: discord.Interaction, select: discord.ui.Select):
         chosen_job = select.values[0]
+
+        # ✅ 시트 업데이트
         sheet = get_sheet()
         sheet.update_cell(self.row_idx, 12, chosen_job)
 
-        # 본인에게는 ephemeral로 완료 안내
+        # ✅ 본인에게는 ephemeral 메시지 수정
         await interaction.response.edit_message(
             content=f"✅ 전직이 완료되었습니다! ({chosen_job} {get_job_icon(chosen_job)})",
             view=None
         )
 
-        # 전체 채널 공지
+        # ✅ 전체 채널 공지
         channel = self.bot.get_channel(self.channel_id)
         if channel:
             await channel.send(
@@ -67,6 +64,7 @@ class JobCog(commands.Cog):
                 current_level = safe_int(row.get("레벨", 1))
                 current_job = row.get("직업", "백수")
 
+                # 🔴 레벨 부족
                 if current_level < 5:
                     await interaction.followup.send(
                         f"❌ {interaction.user.mention} 님은 아직 레벨이 부족합니다! "
@@ -75,6 +73,7 @@ class JobCog(commands.Cog):
                     )
                     return
 
+                # 🔴 이미 직업 있음
                 if current_job != "백수":
                     await interaction.followup.send(
                         f"❌ {interaction.user.mention} 님은 이미 `{current_job}` 직업입니다. "
@@ -83,7 +82,7 @@ class JobCog(commands.Cog):
                     )
                     return
 
-                # 조건 충족 → 전직 UI
+                # ✅ 조건 충족 → 전직 UI
                 view = JobSelectView(idx, self.bot, interaction.channel.id)
                 await interaction.followup.send(
                     "⚔️ 전직할 직업을 선택하세요:",
@@ -92,6 +91,7 @@ class JobCog(commands.Cog):
                 )
                 return
 
+        # 🔴 유저 데이터 없음
         await interaction.followup.send(
             "⚠️ 유저 데이터를 찾을 수 없어요. 메시지를 좀 더 쳐야 기록이 생길 수 있어요!",
             ephemeral=True
