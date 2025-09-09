@@ -20,6 +20,7 @@ def get_job_icon(job: str) -> str:
     }
     return icons.get(job, "🎖️")
 
+
 def get_sheet():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_dict = json.loads(os.getenv("GOOGLE_CREDS"))
