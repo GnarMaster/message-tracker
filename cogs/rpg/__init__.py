@@ -24,3 +24,4 @@ async def setup(bot):
                         print(f"✅ Loaded skill: {module_import}")
                 except Exception as e:
                     print(f"❗ Failed to load skill {module_import}: {e}")
+
