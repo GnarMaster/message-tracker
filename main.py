@@ -315,7 +315,8 @@ async def sync_cache_to_sheet():
                     0, # H열 (비워둠)
                     reels_from_cache, # 릴스 데이터
                     level,
-                    inlevel_exp
+                    inlevel_exp,
+                    "백수"
                 ])
 
             # 처리된 캐시 키를 삭제 목록에 추가
@@ -416,10 +417,11 @@ async def 내레벨(interaction: discord.Interaction):
                 level = safe_int(row.get("레벨", 1))
                 exp = safe_float(row.get("현재레벨경험치", 0))
                 need = exp_needed_for_next_level(level)
-
+                job = row.get("직업","백수")
                 msg = (f"👤 **{username}** 님의 현재 상태\n"
                        f"📊 레벨: **{level}**\n"
-                       f"⭐ 경험치: {exp:.1f} / {need:.1f}")
+                       f"⭐ 경험치: {exp:.1f} / {need:.1f}\n"
+                       f"💼 직업: {job}")
                 await interaction.followup.send(msg)
                 return
 
