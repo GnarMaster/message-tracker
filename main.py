@@ -286,7 +286,7 @@ async def sync_cache_to_sheet():
                         f"🎉 <@{user_id}> 님이 **레벨 {new_level}** 달성!"
                     )
 
-                    if new_level == 5;
+                    if new_level == 5:
                         await bot.get.channel(CHNNEL_ID).send(
                             f"⚔️ <@{user_id}> 님, 이제 `/전직` 명령어를 이용해 전직할 수 있어요!"
                         )
