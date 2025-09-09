@@ -137,7 +137,7 @@ async def on_ready():
     message_log = load_data()
     print(f"✅ 봇 로그인 완료: {bot.user}")
 
-     for filename in os.listdir("./cogs"):
+    for filename in os.listdir("./cogs"):
         if filename.endswith(".py"):
             await bot.load_extension(f"cogs.{filename[:-3]}")
             
