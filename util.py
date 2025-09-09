@@ -26,3 +26,4 @@ def get_sheet():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
     return client.open("Discord_Message_Log").sheet1
+
