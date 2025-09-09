@@ -137,6 +137,11 @@ async def on_ready():
     message_log = load_data()
     print(f"✅ 봇 로그인 완료: {bot.user}")
     await tree.sync()
+
+    for filename in os.listdir("./cogs"):
+        if filename.endswith(".py"):
+            await bot.load_extension(f"cogs.{filename[:-3]}")
+    
     scheduler = AsyncIOScheduler(timezone=timezone("Asia/Seoul"))
     scheduler.add_job(send_birthday_congrats, 'cron', hour=0, minute=0)
     # ✅ 1분마다 실행되는 작업 등록
@@ -603,24 +608,6 @@ async def send_monthly_stats():
     except Exception as e:
         print(f"❗ send_monthly_stats 에러 발생: {e}")
         traceback.print_exc()
-
-# ✅ 공익근무표 기능
-duty_cycle = ["주간", "야간", "비번", "휴무"]
-start_dates = {
-    "임현수": datetime(2025, 4, 14)
-}
-
-@tree.command(name="공익근무표", description="오늘의 공익 근무표를 확인합니다.")
-async def duty_chart(interaction: discord.Interaction):
-    today = (datetime.utcnow() + timedelta(hours=9)).date()
-    result = [f"[{today} 공익근무표]"]
-
-    for name, start_date in start_dates.items():
-        days_passed = (today - start_date.date()).days
-        duty = duty_cycle[days_passed % len(duty_cycle)]
-        result.append(f"{name} - {duty}")
-
-    await interaction.response.send_message("\n".join(result))
 
 # ✅ 점메추 기능
 def load_menu():
