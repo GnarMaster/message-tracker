@@ -144,7 +144,7 @@ class Bomb(commands.Cog):
                 effect = "🎯"
             elif dmg_type == "medium":
                 effect = "💥"
-            elif: dmg_type == "LEGEND":
+            elif dmg_type == "LEGEND":
                 effect = "⚡레전드상황발생⚡"
             else:
                 effect = "🔥 치명적!"
