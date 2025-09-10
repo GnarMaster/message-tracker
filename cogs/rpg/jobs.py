@@ -75,8 +75,7 @@ class JobCog(commands.Cog):
                 # 🔴 이미 직업 있음
                 if current_job != "백수":
                     await interaction.followup.send(
-                        f"❌ {interaction.user.mention} 님은 이미 `{current_job}` 직업입니다. "
-                        "전직은 한 번만 가능합니다!",
+                        f"❌ {interaction.user.mention} 님은 이미 `{current_job}` 직업입니다. ",
                         ephemeral=True
                     )
                     return
