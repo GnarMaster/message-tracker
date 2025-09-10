@@ -142,7 +142,6 @@ class Steal(commands.Cog):
         # ✅ 성공 메시지
         await interaction.followup.send(
             f"🥷 {interaction.user.name}님이 {target.mention} 님의 경험치를 스틸하였습니다!\n"
-            f"✨ {interaction.user.name} +{base+current_level} exp | "
             f"💀 {target.name} -{base} exp (현재 경험치: {new_target_exp})"
         )
 
