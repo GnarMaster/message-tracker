@@ -119,8 +119,7 @@ async def on_ready():
     for filename in os.listdir("./cogs"):
         if filename.endswith(".py"):
             await bot.load_extension(f"cogs.{filename[:-3]}")
-            
-    await bot.load_extension("cogs.rpg")        
+                  
     await tree.sync()
    
     scheduler = AsyncIOScheduler(timezone=timezone("Asia/Seoul"))
