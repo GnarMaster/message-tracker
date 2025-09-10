@@ -95,3 +95,5 @@ class JobCog(commands.Cog):
             "⚠️ 유저 데이터를 찾을 수 없어요. 메시지를 좀 더 쳐야 기록이 생길 수 있어요!",
             ephemeral=True
         )
+async def setup(bot):
+    await bot.add_cog(JobCog(bot))
