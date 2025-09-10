@@ -1,8 +1,10 @@
 from flask import Flask, jsonify
+from flask_crs import CORS
 from threading import Thread
 from utils import get_sheet, safe_int  # ✅ 네 util 함수 가져오기
 
 app = Flask('')
+CORS(app)
 
 @app.route('/')
 def home():
