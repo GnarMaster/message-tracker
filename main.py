@@ -282,16 +282,7 @@ async def sync_cache_to_sheet():
                 new_reels = current_reels + reels_from_cache # 릴스도 합산
 
                 new_level = current_level
-                gained_exp = total_messages_from_cache
-
-                # 궁수 패시브 체크
-                job = row.get("직업","백수")
-                if job == "궁수":
-                    chance = min(100, 5+ current_level)
-                    if random.randint(1,100) <= chance:
-                        gained_exp *= 2
-        
-                new_inlevel_exp = current_inlevel_exp + gained_exp
+                new_inlevel_exp = current_inlevel_exp + total_messages_from_cache
                 
                 
                 # ✅ 레벨업 체크
