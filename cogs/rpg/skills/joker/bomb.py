@@ -58,7 +58,7 @@ class Bomb(commands.Cog):
     # ✅ 폭탄 스킬
     @app_commands.command(
         name="폭탄",
-        description="특수 전용 스킬: 랜덤 유저에게 폭탄을 던집니다. (쿨타임 6시간)"
+        description="특수 전용 스킬: 랜덤 유저에게 폭탄을 던집니다. (쿨타임 4시간)"
     )
     async def 폭탄(self, interaction: discord.Interaction):
         user_id = str(interaction.user.id)
@@ -67,10 +67,10 @@ class Bomb(commands.Cog):
         # ⚡ 먼저 응답 예약
         await interaction.response.defer(ephemeral=False)
 
-        # 최근 사용 기록 확인 (쿨타임 6시간)
+        # 최근 사용 기록 확인 (쿨타임 4시간)
         last_used = self.get_last_skill_time(user_id, "폭탄")
-        if last_used and datetime.now() < last_used + timedelta(hours=6):
-            remain = (last_used + timedelta(hours=6)) - datetime.now()
+        if last_used and datetime.now() < last_used + timedelta(hours=4):
+            remain = (last_used + timedelta(hours=4)) - datetime.now()
             minutes = remain.seconds // 60
             await interaction.followup.send(
                 f"⏳ 아직 쿨타임입니다! {minutes}분 뒤에 다시 시도하세요."
