@@ -5,7 +5,6 @@ from discord.ui import View
 
 from utils import get_sheet, safe_int, get_job_icon
 
-
 class JobSelectView(View):
     def __init__(self, row_idx: int, bot: commands.Bot, channel_id: int):
         super().__init__(timeout=60)
