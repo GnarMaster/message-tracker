@@ -44,14 +44,18 @@ class Bomb(commands.Cog):
         log_sheet.append_row([now_str, user_id, username, skill_name, note])
 
     # ✅ 피해량 계산
-    def get_bomb_damage(self):
+    def get_bomb_damage(self, level: int):
         roll = random.uniform(0, 100)
         if roll <= 70:   # 70%
-            return random.randint(20, 30), "normal"
+            return random.randint(15, 25) + level, "normal"
         elif roll <= 90: # 20%
-            return random.randint(31, 70), "medium"
+            return random.randint(33, 47) + level, "medium"
         elif roll <= 99: # 9%
-            return random.randint(71, 100), "critical"
+            sub_roll = random.uniform(0,100)
+            if sub_roll <=1:
+                return 300 + level, "LEGEND"
+            else : 
+                return random.randint(55, 90) + level, "critical"
         else:            # 1% 자폭
             return -40, "self"
 
@@ -111,7 +115,8 @@ class Bomb(commands.Cog):
         target_name = target_data.get("닉네임", f"ID:{target_id}")
 
         # 피해량 계산
-        damage, dmg_type = self.get_bomb_damage()
+        level = safe_int(user_data.get("레벨",1))
+        damage, dmg_type = self.get_bomb_damage(level)
 
         if dmg_type == "self":
             # 자폭
@@ -139,6 +144,8 @@ class Bomb(commands.Cog):
                 effect = "🎯"
             elif dmg_type == "medium":
                 effect = "💥"
+            elif: dmg_type == "LEGEND":
+                effect = "⚡레전드상황발생⚡"
             else:
                 effect = "🔥 치명적!"
 
