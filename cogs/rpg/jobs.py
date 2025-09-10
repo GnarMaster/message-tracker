@@ -21,7 +21,7 @@ class JobSelectView(View):
             discord.SelectOption(label="마법사", description="아직 미구현", emoji="🔮"),
             discord.SelectOption(label="궁수", description="헤드샷! 일정 확률 경험치 2배", emoji="🏹"),
             discord.SelectOption(label="도적", description="4시간에 한번 경험치 스틸", emoji="🥷"),
-            discord.SelectOption(label="특수", description="아직 미구현", emoji="🎭"),
+            discord.SelectOption(label="특수", description="6시간에 한번 폭탄", emoji="🎭"),
         ]
     )
     async def select_callback(self, interaction: discord.Interaction, select: discord.ui.Select):
