@@ -44,7 +44,8 @@ class Archer(commands.Cog):
         user_id = str(interaction.user.id)
         username = interaction.user.name
 
-        await interaction.response.defer()
+         # ⚡ 즉시 응답 → 유저에게 "처리중..." 표시 (ephemeral=True)
+        await interaction.response.send_message("🏹 더블샷 준비 중...", ephemeral=True)
 
         # 쿨타임 확인 (4시간)
         last_used = self.get_last_skill_time(user_id, "더블샷")
