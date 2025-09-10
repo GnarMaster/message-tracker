@@ -79,17 +79,19 @@ class Archer(commands.Cog):
             return
 
         level = safe_int(user_row[1].get("레벨", 1))
-        crit_chance = min(100, 10 + level)        # 치명타 확률 = 10 + 레벨 %
-        miss_chance = max(0, 10 - (level // 5))   # 빗나감 확률 = 10 - 레벨/5 %
-
+    
         # 데미지 계산 함수
         def calc_damage():
             base = 4 + level
+            crit_chance = 10
+            miss_chance = max(0, 10 - (level // 5))   # 빗나감 확률 = 10 - 레벨/5 %
+            hit_chance = 100 - crit_chance - miss_chance
+            
             roll = random.randint(1, 100)
             if roll <= crit_chance:  # 치명타
                 return base * 2, "🔥 치명타!!!"
-            elif roll <= crit_chance + (100 - crit_chance - miss_chance):  # 명중
-                return base, "✅ 성공!"
+            elif roll <= crit_chance + hit_chance:  # 명중
+                return base, "✅ 명중!"
             else:  # 빗나감
                 return 0, "❌ 빗나감..."
 
