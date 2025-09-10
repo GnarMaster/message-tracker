@@ -84,7 +84,7 @@ class Archer(commands.Cog):
 
         # 데미지 계산 함수
         def calc_damage():
-            base = 6 + level
+            base = 4 + level
             roll = random.randint(1, 100)
             if roll <= crit_chance:  # 치명타
                 return base * 2, "🔥 치명타!!!"
