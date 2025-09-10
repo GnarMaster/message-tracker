@@ -93,9 +93,9 @@ class Mage(commands.Cog):
         # 데미지 계산 함수
         def calc_damage():
             if random.randint(1, 100) <= 10:  # 10% 확률 대성공
-                return 15 + (level * 2), "🔥 대성공!!!"
+                return 20 + (level * 2), "🔥 대성공!!!"
             else:
-                return 8 + level, "✅ 성공"
+                return 10 + level, "✅ 성공"
 
         # 지정 대상 피해
         dmg1, msg1 = calc_damage()
