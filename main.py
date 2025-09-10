@@ -178,9 +178,12 @@ async def on_message(message):
 
     save_data(message_log)
     await bot.process_commands(message)
-
+# 요구 경험치
 def exp_needed_for_next_level(level: int) -> int:
-    if level < 10:
+    
+    if level < 6:
+        return int(0.6 * (level ** 2) + 60)
+    elif level < 10:
         return int(0.8 * (level ** 2) + 100)
     elif level < 20:
         return int(1.2 * (level ** 2) + 150)
