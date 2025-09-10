@@ -181,8 +181,8 @@ async def on_message(message):
 # 요구 경험치
 def exp_needed_for_next_level(level: int) -> int:
     
-    if level < 6:
-        return int(0.6 * (level ** 2) + 60)
+    if level < 5:
+        return int(0.6 * (level ** 2) + level*11)
     elif level < 10:
         return int(0.8 * (level ** 2) + 100)
     elif level < 20:
