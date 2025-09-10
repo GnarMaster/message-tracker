@@ -116,9 +116,17 @@ async def on_ready():
     message_log = load_data()
     print(f"✅ 봇 로그인 완료: {bot.user}")
 
-    for filename in os.listdir("./cogs"):
-        if filename.endswith(".py"):
-            await bot.load_extension(f"cogs.{filename[:-3]}")
+    # cogs/ 하위 모든 폴더까지 탐색
+    for root, dirs, files in os.walk("./cogs"):
+        for file in files:
+            if file.endswith(".py") and file != "__init__.py":
+                rel_path = os.path.relpath(os.path.join(root, file), ".")
+                module_name = rel_path.replace(os.sep, ".")[:-3]  # .py 제거
+                try:
+                    await bot.load_extension(module_name)
+                    print(f"✅ Loaded extension: {module_name}")
+                except Exception as e:
+                    print(f"❗ Failed to load {module_name}: {e}")
                   
     await tree.sync()
    
