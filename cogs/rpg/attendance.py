@@ -31,11 +31,12 @@ class Attendance(commands.Cog):
 
         # 이미 출석했는지 확인
         for row in records:
-            if str(row.get("유저 ID", "")) == user_id and row.get("날짜") == today:
-                await interaction.response.send_message(
-                    "✅ 오늘은 이미 출석체크 했습니다!", ephemeral=True
-                )
+            row_user = str(row.get("유저 ID", "")).strip()
+            row_date = str(row.get("날짜", "")).strip()
+            if row_user == user_id and row_date == today:
+                await interaction.followup.send("✅ 오늘은 이미 출석체크 했습니다!", ephemeral=True)
                 return
+
 
         # 랜덤 경험치 보상 (기본 10~60, 10% 확률로 100)
         if random.random() <= 0.1:
