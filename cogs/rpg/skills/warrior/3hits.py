@@ -101,9 +101,9 @@ class ThreeHits(commands.Cog):
 
                 # 2타/3타 강화 배율 적용
                 if i == 2:
-                    dmg = int(base * 1.5)
+                    dmg = int(base * 1.3)
                 elif i == 3:
-                    dmg = base * 2
+                    dmg = int(base * 1.5)
                 else:
                     dmg = base
 
