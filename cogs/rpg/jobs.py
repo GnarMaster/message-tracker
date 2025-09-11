@@ -18,7 +18,7 @@ class JobSelectView(View):
         max_values=1,
         options=[
             discord.SelectOption(label="전사", description="삼연격: 지정 1명에게 점점 낮아지는 확률로 3연속 공격 (쿨타임 4시간)", emoji="⚔️"),
-            discord.SelectOption(label="마법사", description="체인라이트닝: 지정 1명 + 랜덤 1명 동시 공격 (쿨타임 4시간)", emoji="🔮"),
+            discord.SelectOption(label="마법사", description="체인라이트닝: 지정 1명 + 랜덤 1명 동시 공격, 이후 연쇄 공격 (쿨타임 4시간)", emoji="🔮"),
             discord.SelectOption(label="궁수", description="더블샷: 지정 2명에게 연속 사격 (쿨타임 4시간, 같은 유저 지목 가능)", emoji="🏹"),
             discord.SelectOption(label="도적", description="스틸: 지정 1명의 경험치를 훔침 (쿨타임 4시간)", emoji="🥷"),
             discord.SelectOption(label="특수", description="폭탄: 랜덤 1명에게 폭탄 던지기 (쿨타임 4시간)", emoji="🎭"),
