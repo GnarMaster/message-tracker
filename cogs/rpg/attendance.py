@@ -34,19 +34,20 @@ class Attendance(commands.Cog):
         sheet = self.get_attendance_sheet()
         records = sheet.get_all_records()
 
-        # 이미 출석했는지 확인
+        # ✅ 1. 이미 출석했는지 먼저 확인
         for row in records:
-            if str(row.get("유저 ID", "")) == user_id and row.get("날짜") == today:
+            row_date = str(row.get("날짜", "")).strip()
+            if str(row.get("유저 ID", "")) == user_id and row_date == today:
                 await interaction.followup.send("✅ 오늘은 이미 출석체크 했습니다!", ephemeral=True)
                 return
 
-        # 랜덤 경험치 보상 (기본 10~40, 10% 확률로 100)
+        # ✅ 2. 랜덤 경험치 보상 (기본 10~40, 10% 확률로 100)
         reward = 100 if random.random() <= 0.1 else random.randint(10, 40)
 
-        # 출석 기록 추가
+        # ✅ 3. 출석 기록 추가
         sheet.append_row([user_id, username, today, reward])
 
-        # 메인 시트에서 경험치 갱신
+        # ✅ 4. 메인 시트에서 경험치 갱신
         main_sheet = get_sheet()
         records = main_sheet.get_all_records()
         for idx, row in enumerate(records, start=2):
@@ -55,13 +56,13 @@ class Attendance(commands.Cog):
                 main_sheet.update_cell(idx, 11, current_exp + reward)
                 break
 
-        # ✅ 개인 메시지 (본인만 확인 가능)
+        # ✅ 5. 개인 메시지 (본인만 확인 가능)
         await interaction.followup.send(
             f"🎉 출석 완료!\n⭐ 보상 경험치: **{reward} exp**",
             ephemeral=True
         )
 
-        # ✅ 로또 당첨은 모두에게 공개
+        # ✅ 6. 로또 당첨은 모두에게 공개
         if reward == 100:
             await interaction.followup.send(
                 f"🎊 {interaction.user.mention} 님이 출석 로또에 당첨되어 **100 exp**를 획득했습니다! 🎉",
