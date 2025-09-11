@@ -126,5 +126,6 @@ class ThreeHits(commands.Cog):
             f"⚔️ {interaction.user.mention} 님이 {target.mention} 님에게 **삼연격**을 시전했다!\n{result_msg}"
         )
 
+
 async def setup(bot):
     await bot.add_cog(ThreeHits(bot))
