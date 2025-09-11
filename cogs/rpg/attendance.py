@@ -24,6 +24,9 @@ class Attendance(commands.Cog):
         user_id = str(interaction.user.id)
         username = interaction.user.name
 
+        # ✅ 먼저 응답 예약 (3초 제한 방지)
+        await interaction.response.defer(ephemeral=True)
+
         # ✅ 한국 시간(KST) 기준 날짜
         now_kst = datetime.now(timezone("Asia/Seoul"))
         today = now_kst.strftime("%Y-%m-%d")
@@ -34,16 +37,11 @@ class Attendance(commands.Cog):
         # 이미 출석했는지 확인
         for row in records:
             if str(row.get("유저 ID", "")) == user_id and row.get("날짜") == today:
-                await interaction.response.send_message(
-                    "✅ 오늘은 이미 출석체크 했습니다!", ephemeral=True
-                )
+                await interaction.followup.send("✅ 오늘은 이미 출석체크 했습니다!", ephemeral=True)
                 return
 
         # 랜덤 경험치 보상 (기본 10~40, 10% 확률로 100)
-        if random.random() <= 0.1:
-            reward = 100
-        else:
-            reward = random.randint(10, 40)
+        reward = 100 if random.random() <= 0.1 else random.randint(10, 40)
 
         # 출석 기록 추가
         sheet.append_row([user_id, username, today, reward])
@@ -57,16 +55,17 @@ class Attendance(commands.Cog):
                 main_sheet.update_cell(idx, 11, current_exp + reward)
                 break
 
-        # ✅ 첫 응답 → 반드시 한번만
-        await interaction.response.send_message(
+        # ✅ 개인 메시지 (본인만 확인 가능)
+        await interaction.followup.send(
             f"🎉 출석 완료!\n⭐ 보상 경험치: **{reward} exp**",
             ephemeral=True
         )
 
-        # ✅ 로또 당첨(100 exp) → followup으로 추가 공지
+        # ✅ 로또 당첨은 모두에게 공개
         if reward == 100:
             await interaction.followup.send(
-                f"🎊 {interaction.user.mention} 님이 출석 로또에 당첨되어 **100 exp**를 획득했습니다! 🎉"
+                f"🎊 {interaction.user.mention} 님이 출석 로또에 당첨되어 **100 exp**를 획득했습니다! 🎉",
+                ephemeral=False
             )
 
 async def setup(bot):
