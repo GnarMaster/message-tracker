@@ -123,7 +123,7 @@ class ThreeHits(commands.Cog):
         # 출력 메시지
         result_msg = "\n".join(logs) + f"\n👉 총합: {target.mention} 님에게 {total_damage} 피해!"
         await interaction.followup.send(
-            f"⚔️ {interaction.user.mention} 님이 {target.mention} 님에게 **삼연격**을 시전했다!\n{result_msg}"
+            f"⚔️ {interaction.user.name} 님이 {target.mention} 님에게 **삼연격**을 시전했다!\n{result_msg}"
         )
 
 
