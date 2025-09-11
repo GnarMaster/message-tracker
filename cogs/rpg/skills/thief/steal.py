@@ -125,8 +125,8 @@ class Steal(commands.Cog):
             return
 
         # ✅ 경험치 갱신
-        new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - base          # 상대는 base만 잃음
-        new_user_exp   = safe_int(user_data.get("현재레벨경험치", 0)) + (base + current_level)  # 나는 base+레벨 얻음
+        new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - (base + current_level) 
+        new_user_exp   = safe_int(user_data.get("현재레벨경험치", 0)) + (base + current_level)  
 
         sheet.update_cell(target_idx, 11, new_target_exp)
         sheet.update_cell(user_idx, 11, new_user_exp)
@@ -136,13 +136,13 @@ class Steal(commands.Cog):
             user_id,
             interaction.user.name,
             "스틸",
-            f"대상: {target.name}, {base} 잃음 / 자신: {base}+{current_level} = {base+current_level} 획득"
+            f"대상: {target.name}, {base+current_level} 잃음 / 자신: {base}+{current_level} = {base+current_level} 획득"
         )
 
         # ✅ 성공 메시지
         await interaction.followup.send(
             f"🥷 {interaction.user.name}님이 {target.mention} 님의 경험치를 스틸하였습니다!\n"
-            f"💀 {target.name} -{base} exp (현재 경험치: {new_target_exp})"
+            f"💀 {target.name} -{base+current_level} exp (현재 경험치: {new_target_exp})"
         )
 
 async def setup(bot):
