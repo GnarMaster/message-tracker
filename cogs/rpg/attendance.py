@@ -15,7 +15,9 @@ class Attendance(commands.Cog):
         try:
             return sheet.worksheet("Attendance")
         except:
-            return sheet.add_worksheet(title="Attendance", rows=1000, cols=5)
+            ws = sheet.add_worksheet(title="Attendance", rows=1000, cols=5)
+            ws.append_row(["유저 ID", "닉네임", "날짜", "보상EXP"])  # 헤더 자동 추가
+            return ws
 
     @app_commands.command(name="출석", description="하루에 한번, 일정 경험치(10~40)를 제공합니다")
     async def 출석(self, interaction: discord.Interaction):
@@ -37,7 +39,7 @@ class Attendance(commands.Cog):
                 )
                 return
 
-        # 랜덤 경험치 보상 (기본 10~60, 10% 확률로 100)
+        # 랜덤 경험치 보상 (기본 10~40, 10% 확률로 100)
         if random.random() <= 0.1:
             reward = 100
         else:
@@ -55,15 +57,15 @@ class Attendance(commands.Cog):
                 main_sheet.update_cell(idx, 11, current_exp + reward)
                 break
 
-        # ✅ 본인에게만 결과 보여주기
+        # ✅ 첫 응답 → 반드시 한번만
         await interaction.response.send_message(
             f"🎉 출석 완료!\n⭐ 보상 경험치: **{reward} exp**",
             ephemeral=True
         )
 
-        # ✅ 로또 당첨(100 exp)이면 전체 채널에 공지
+        # ✅ 로또 당첨(100 exp) → followup으로 추가 공지
         if reward == 100:
-            await interaction.channel.send(
+            await interaction.followup.send(
                 f"🎊 {interaction.user.mention} 님이 출석 로또에 당첨되어 **100 exp**를 획득했습니다! 🎉"
             )
 
