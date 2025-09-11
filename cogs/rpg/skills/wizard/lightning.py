@@ -129,7 +129,8 @@ class Mage(commands.Cog):
                     msg2 = "✅ 명중!"
                 new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) - dmg
                 sheet.update_cell(rand_idx, 11, new_exp)
-                damage_logs.append(f"⚡ 연쇄 번개: <@{rand_id}> → {msg2} ({dmg})")
+                rand_name = rand_data.get("닉네임", f"ID:{rand_id}")
+                damage_logs.append(f"⚡ 연쇄 번개: {rand_name} → {msg2} ({dmg})")
 
                 # 3️⃣ 이후 연쇄
                 prob = 0.5
@@ -149,7 +150,8 @@ class Mage(commands.Cog):
                     candidates.remove((rand_idx, rand_data))
                     new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) - dmg
                     sheet.update_cell(rand_idx, 11, new_exp)
-                    damage_logs.append(f"⚡ 추가 연쇄: <@{rand_id}> → {msgX} ({dmg})")
+                    rand_name = rand_data.get("닉네임", f"ID:{rand_id}")
+                    damage_logs.append(f"⚡ 추가 연쇄: {rand_name} → {msgX} ({dmg})")
 
                     prob *= 0.5
                     step *= 2
@@ -162,7 +164,7 @@ class Mage(commands.Cog):
 
         # 출력 메시지
         await interaction.followup.send(
-            f"🔮 {interaction.user.mention} 님의 **체인라이트닝** 발동!\n" +
+            f"🔮 {interaction.user.name}님의 **체인라이트닝** 발동!\n" +
             "\n".join(damage_logs)
         )
 
