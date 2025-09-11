@@ -118,10 +118,9 @@ class Archer(commands.Cog):
 
         # 출력 메시지
         await interaction.followup.send(
-            f"🏹 {interaction.user.mention} 님의 **더블샷** 발동!\n"
+            f"🏹 {interaction.user.name} 님의 **더블샷** 발동!\n"
             f"🎯 첫 번째 타겟: {target1.mention} → {msg1} ({dmg1})\n"
             f"🎯 두 번째 타겟: {target2.mention} → {msg2} ({dmg2})\n"
-            f"👉 {target1.mention} -{dmg1} exp | {target2.mention} -{dmg2} exp"
         )
 
 async def setup(bot):
