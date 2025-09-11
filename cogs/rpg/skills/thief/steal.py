@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from utils import get_sheet, safe_int
 import random
 
+
 class Steal(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
