@@ -41,7 +41,7 @@ class Mage(commands.Cog):
     # ✅ 체라 스킬
     @app_commands.command(
         name="체라",
-        description="마법사 전용 스킬: 지정 1명 + 랜덤 1명 동시 공격, 이후 50% 확률로 연쇄 공격 (쿨타임 4시간)"
+        description="마법사 전용 스킬: 지정 1명 + 랜덤 1명 동시 공격 이후 연쇄 공격 (쿨타임 4시간)"
     )
     async def 체라(self, interaction: discord.Interaction, target: discord.Member):
         user_id = str(interaction.user.id)
@@ -90,49 +90,69 @@ class Mage(commands.Cog):
 
         level = safe_int(user_row[1].get("레벨", 1))
 
-        # 데미지 계산 함수
-        def calc_damage():
-            if random.randint(1, 100) <= 10:  # 10% 확률 대성공
-                return 20 + (level * 2), "🔥 대성공!!!"
-            else:
-                return 10 + level, "✅ 성공"
+        # 기본뎀 계산
+        if random.randint(1, 100) <= 10:  # 첫타 대성공
+            base_damage = 20 + (level * 2)
+            msg_base = "🔥 대성공!!!"
+        else:
+            base_damage = 10 + level
+            msg_base = "✅ 성공"
 
-        base_dmg, msg1 = calc_damage()
         damage_logs = []
 
         # 1️⃣ 지정 대상 (풀뎀)
         target_idx, target_data = target_row
-        new_exp = safe_int(target_data.get("현재레벨경험치", 0)) - base_dmg
+        dmg = base_damage
+        # 치명타 판정 (10%)
+        if random.randint(1, 100) <= 10:
+            dmg *= 2
+            msg1 = "🔥 치명타!"
+        else:
+            msg1 = msg_base
+        new_exp = safe_int(target_data.get("현재레벨경험치", 0)) - dmg
         sheet.update_cell(target_idx, 11, new_exp)
-        damage_logs.append(f"🎯 지정 타겟 {target.mention} → {msg1} ({base_dmg})")
+        damage_logs.append(f"🎯 지정 타겟 {target.mention} → {msg1} ({dmg})")
 
-        # 2️⃣ 첫 랜덤 대상 (절반)
+        # 2️⃣ 첫 랜덤 대상 (기본뎀 // 2)
         if candidates:
             rand_idx, rand_data = random.choice(candidates)
             rand_id = str(rand_data.get("유저 ID"))
-            candidates.remove((rand_idx, rand_data))  # 중복 방지
+            candidates.remove((rand_idx, rand_data))
 
-            dmg = base_dmg // 2
-            new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) - dmg
-            sheet.update_cell(rand_idx, 11, new_exp)
-            damage_logs.append(f"⚡ 연쇄 번개: <@{rand_id}> → 절반 피해 ({dmg})")
-
-            # 3️⃣ 이후 연쇄 (확률 50%씩 줄어듦, 데미지는 계속 반감)
-            prob = 0.5
-            current_dmg = dmg
-            while candidates and random.random() < prob:
-                current_dmg //= 2
-                if current_dmg <= 0:
-                    break
-                rand_idx, rand_data = random.choice(candidates)
-                rand_id = str(rand_data.get("유저 ID"))
-                candidates.remove((rand_idx, rand_data))  # 중복 방지
-
-                new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) - current_dmg
+            base = base_damage // 2
+            if base > 0:
+                dmg = base
+                if random.randint(1, 100) <= 10:
+                    dmg *= 2
+                    msg2 = "🔥 치명타!"
+                else:
+                    msg2 = "✅ 명중!"
+                new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) - dmg
                 sheet.update_cell(rand_idx, 11, new_exp)
-                damage_logs.append(f"⚡ 추가 연쇄: <@{rand_id}> → {current_dmg} 피해")
+                damage_logs.append(f"⚡ 연쇄 번개: <@{rand_id}> → {msg2} ({dmg})")
 
-                prob *= 0.5  # 다음은 절반 확률
+                # 3️⃣ 이후 연쇄
+                prob = 0.5
+                step = 4
+                while candidates and random.random() < prob:
+                    base = base_damage // step
+                    if base <= 0:
+                        break
+                    dmg = base
+                    if random.randint(1, 100) <= 10:
+                        dmg *= 2
+                        msgX = "🔥 치명타!"
+                    else:
+                        msgX = "✅ 명중!"
+                    rand_idx, rand_data = random.choice(candidates)
+                    rand_id = str(rand_data.get("유저 ID"))
+                    candidates.remove((rand_idx, rand_data))
+                    new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) - dmg
+                    sheet.update_cell(rand_idx, 11, new_exp)
+                    damage_logs.append(f"⚡ 추가 연쇄: <@{rand_id}> → {msgX} ({dmg})")
+
+                    prob *= 0.5
+                    step *= 2
 
         # 로그 기록
         self.log_skill_use(
