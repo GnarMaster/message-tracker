@@ -80,24 +80,34 @@ class ThreeHits(commands.Cog):
             await interaction.followup.send("❌ 전사만 사용할 수 있는 스킬입니다!")
             return
 
-        # 레벨
         level = safe_int(user_row[1].get("레벨", 1))
 
-        # 3연격 판정
-        chances = [90, 50, 10]  # 1타 → 3타 확률
+        # 기본 데미지 공식
+        def calc_base_damage():
+            crit_roll = random.randint(1, 100)
+            if crit_roll <= 10:  # 10% 치명타
+                return 10 + (level * 2), "🔥 치명타!"
+            else:
+                return 5 + level, "✅ 명중!"
+
+        chances = [90, 45, 15]  # 1타, 2타, 3타 확률
         logs = []
         total_damage = 0
 
         for i, chance in enumerate(chances, start=1):
             roll = random.randint(1, 100)
             if roll <= chance:
-                crit_roll = random.randint(1, 100)
-                if crit_roll <= 10:  # 10% 확률 대성공
-                    dmg = 10 + (level * 2)
-                    logs.append(f"{i}타: 🔥 대성공!!! ({dmg})")
+                base, msg = calc_base_damage()
+
+                # 2타/3타 강화 배율 적용
+                if i == 2:
+                    dmg = int(base * 1.5)
+                elif i == 3:
+                    dmg = base * 2
                 else:
-                    dmg = 5 + level
-                    logs.append(f"{i}타: ✅ 성공! ({dmg})")
+                    dmg = base
+
+                logs.append(f"{i}타: {msg} ({dmg})")
                 total_damage += dmg
             else:
                 logs.append(f"{i}타: ❌ 실패...")
