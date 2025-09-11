@@ -41,7 +41,7 @@ class Mage(commands.Cog):
     # ✅ 체라 스킬
     @app_commands.command(
         name="체라",
-        description="마법사 전용 스킬: 지정한 1명과 랜덤 1명을 동시에 공격합니다. (쿨타임 4시간)"
+        description="마법사 전용 스킬: 지정 1명 + 랜덤 1명 동시 공격, 이후 50% 확률로 연쇄 공격 (쿨타임 4시간)"
     )
     async def 체라(self, interaction: discord.Interaction, target: discord.Member):
         user_id = str(interaction.user.id)
@@ -69,7 +69,7 @@ class Mage(commands.Cog):
             elif str(row.get("유저 ID", "")) == target_id:
                 target_row = (idx, row)
             else:
-                # 랜덤 타겟은 레벨 2 이상만
+                # 랜덤 타겟 후보 (레벨 2 이상만)
                 if safe_int(row.get("레벨", 1)) >= 2:
                     candidates.append((idx, row))
 
@@ -83,7 +83,7 @@ class Mage(commands.Cog):
             await interaction.followup.send("⚠️ 랜덤으로 맞을 유저(레벨 2 이상)가 없습니다.")
             return
 
-        # 직업 확인 (마법사)
+        # 직업 확인
         if user_row[1].get("직업") != "마법사":
             await interaction.followup.send("❌ 마법사만 사용할 수 있는 스킬입니다!")
             return
@@ -97,31 +97,53 @@ class Mage(commands.Cog):
             else:
                 return 10 + level, "✅ 성공"
 
-        # 지정 대상 피해
-        dmg1, msg1 = calc_damage()
-        target_idx, target_data = target_row
-        new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - dmg1
-        sheet.update_cell(target_idx, 11, new_target_exp)
+        base_dmg, msg1 = calc_damage()
+        damage_logs = []
 
-        # 랜덤 대상 피해 (절반만 적용)
-        rand_idx, rand_data = random.choice(candidates)
-        rand_id = str(rand_data.get("유저 ID"))
-        dmg2 = dmg1 // 2
-        new_rand_exp = safe_int(rand_data.get("현재레벨경험치", 0)) - dmg2
-        sheet.update_cell(rand_idx, 11, new_rand_exp)
+        # 1️⃣ 지정 대상 (풀뎀)
+        target_idx, target_data = target_row
+        new_exp = safe_int(target_data.get("현재레벨경험치", 0)) - base_dmg
+        sheet.update_cell(target_idx, 11, new_exp)
+        damage_logs.append(f"🎯 지정 타겟 {target.mention} → {msg1} ({base_dmg})")
+
+        # 2️⃣ 첫 랜덤 대상 (절반)
+        if candidates:
+            rand_idx, rand_data = random.choice(candidates)
+            rand_id = str(rand_data.get("유저 ID"))
+            candidates.remove((rand_idx, rand_data))  # 중복 방지
+
+            dmg = base_dmg // 2
+            new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) - dmg
+            sheet.update_cell(rand_idx, 11, new_exp)
+            damage_logs.append(f"⚡ 연쇄 번개: <@{rand_id}> → 절반 피해 ({dmg})")
+
+            # 3️⃣ 이후 연쇄 (확률 50%씩 줄어듦, 데미지는 계속 반감)
+            prob = 0.5
+            current_dmg = dmg
+            while candidates and random.random() < prob:
+                current_dmg //= 2
+                if current_dmg <= 0:
+                    break
+                rand_idx, rand_data = random.choice(candidates)
+                rand_id = str(rand_data.get("유저 ID"))
+                candidates.remove((rand_idx, rand_data))  # 중복 방지
+
+                new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) - current_dmg
+                sheet.update_cell(rand_idx, 11, new_exp)
+                damage_logs.append(f"⚡ 추가 연쇄: <@{rand_id}> → {current_dmg} 피해")
+
+                prob *= 0.5  # 다음은 절반 확률
 
         # 로그 기록
         self.log_skill_use(
             user_id, username, "체라",
-            f"{target.name} -{dmg1}, {rand_data.get('닉네임')} -{dmg2}"
+            "; ".join(damage_logs)
         )
 
         # 출력 메시지
         await interaction.followup.send(
-            f"🔮 {interaction.user.mention} 님의 **체인라이트닝** 발동!\n"
-            f"🎯 지정 타겟: {target.mention} → {msg1} ({dmg1})\n"
-            f"⚡ 연쇄 번개: <@{rand_id}> → 절반 피해 ({dmg2})\n"
-            f"👉 {target.mention} -{dmg1} exp | <@{rand_id}> -{dmg2} exp"
+            f"🔮 {interaction.user.mention} 님의 **체인라이트닝** 발동!\n" +
+            "\n".join(damage_logs)
         )
 
 async def setup(bot):
