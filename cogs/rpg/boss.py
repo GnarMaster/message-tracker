@@ -83,14 +83,14 @@ class Boss(commands.Cog):
         if interaction.channel.id != BOSS_CHANNEL_ID:
             await interaction.response.send_message("❌ 보스는 전용 채널에서만 소환 가능합니다!", ephemeral=True)
             return
-
-        await interaction.response.defer()
-        
+            
         boss_sheet = self.get_boss_sheet()
         if self.get_current_boss():
             await interaction.response.send_message("⚠️ 이미 보스가 소환되어 있습니다!", ephemeral=True)
             return
-
+            
+        await interaction.response.defer()
+        
         hp = random.randint(700, 1500)
         boss_sheet.resize(rows=1)  # 기존 데이터 초기화
         boss_sheet.append_row([name, hp, hp, 200, 50, "", "", datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
@@ -101,9 +101,8 @@ class Boss(commands.Cog):
             f"{intro}\n"
             f"☠️ 보스 **{name}** 등장!\n"
             f"❤️ HP: ???\n"
-            f"🎁 보상: 막타 200 EXP | 1등 150 | 2등 125 | 3등 100 | 참가자 50"
+            f"🎁 보상: 막타 200 EXP | 🥇 1등 150 | 🥈 2등 125 | 🥉 3등 100 | 🙌 참가자 50"
         )
-
 
     
     # ✅ 보스 공격
@@ -114,14 +113,12 @@ class Boss(commands.Cog):
             await interaction.response.send_message("❌ 보스는 전용 채널에서만 공격 가능합니다!", ephemeral=True)
             return
 
-        await interaction.response.defer()  # ✅ 응답 예약
-
         user_id = str(interaction.user.id)
         username = interaction.user.name
         boss = self.get_current_boss()
 
         if not boss:
-            await interaction.followup.send("⚠️ 현재 소환된 보스가 없습니다.")
+            await interaction.response.send_message("⚠️ 현재 소환된 보스가 없습니다.", ephemeral=True)
             return
 
         # 쿨타임 확인
@@ -141,9 +138,11 @@ class Boss(commands.Cog):
                 user_row = (idx, row)
                 break
         if not user_row:
-            await interaction.followup.send("⚠️ 당신의 데이터가 없습니다.")
+            await interaction.followup.send("⚠️ 당신의 데이터가 없습니다.", ephemeral=True)
             return
 
+        await interaction.response.defer()  # ✅ 응답 예약
+        
         job = user_row[1].get("직업", "백수")
         level = safe_int(user_row[1].get("레벨", 1))
 
@@ -186,7 +185,7 @@ class Boss(commands.Cog):
 
         # ⚔️ 전사 - 삼연격
         if job == "전사":
-            header_msg = f"⚔️ {user.mention} 님이 보스에게 **삼연격**을 시전했다!"
+            header_msg = f"⚔️ {user.name} 님이 보스에게 **삼연격**을 시전했다!"
             chances = [90, 45, 15]  # 1타, 2타, 3타 확률
             for i, chance in enumerate(chances, start=1):
                 roll = random.randint(1, 100)
@@ -205,7 +204,7 @@ class Boss(commands.Cog):
 
         # 🔮 마법사 - 체인라이트닝 (모든 타격 보스 집중)
         elif job == "마법사":
-            header_msg = f"🔮 {user.mention} 님의 **체인라이트닝** 발동!"
+            header_msg = f"🔮 {user.name} 님의 **체인라이트닝** 발동!"
             chances = [90, 45, 15]
             for i, chance in enumerate(chances, start=1):
                 roll = random.randint(1, 100)
@@ -228,7 +227,7 @@ class Boss(commands.Cog):
 
         # 🏹 궁수 - 더블샷 (보스에게 2발)
         elif job == "궁수":
-            header_msg = f"🏹 {user.mention} 님의 **더블샷** 발동!"
+            header_msg = f"🏹 {user.name} 님의 **더블샷** 발동!"
             for i in range(2):
                 base = 10 + level
                 roll = random.randint(1, 100)
@@ -245,7 +244,7 @@ class Boss(commands.Cog):
 
         # 🥷 도적 - 스틸
         elif job == "도적":
-            header_msg = f"🥷 {user.mention} 님이 보스를 **스틸**하였다!"
+            header_msg = f"🥷 {user.name} 님이 보스를 **스틸**하였다!"
             roll = random.uniform(0, 100)
             if roll <= 80:  # 1~10
                 dmg = random.randint(1, 10) + level
@@ -266,7 +265,7 @@ class Boss(commands.Cog):
 
         # 💣 특수 - 폭탄
         elif job == "특수":
-            header_msg = f"💣 {user.mention} 님이 보스에게 **폭탄**을 던졌다!"
+            header_msg = f"💣 {user.name} 님이 보스에게 **폭탄**을 던졌다!"
             roll = random.uniform(0, 100)
             if roll <= 70:
                 dmg = random.randint(15, 25) + level
@@ -289,7 +288,7 @@ class Boss(commands.Cog):
 
         # 👊 기본 평타
         else:
-            header_msg = f"👊 {user.mention} 님의 평타!"
+            header_msg = f"👊 {user.name} 님의 평타!"
             total_damage = random.randint(10, 30)
             logs.append(f"평타 ({total_damage})")
 
