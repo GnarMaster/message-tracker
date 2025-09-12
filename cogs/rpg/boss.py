@@ -218,26 +218,34 @@ class Boss(commands.Cog):
         # 🔮 마법사 - 체인라이트닝 (모든 타격 보스 집중)
         elif job == "마법사":
             header_msg = f"🔮 {user.name} 님의 **체인라이트닝** 발동!"
-            chances = [90, 45, 15]
-            for i, chance in enumerate(chances, start=1):
-                roll = random.randint(1, 100)
-                if roll <= chance:
-                    base = 10 + level
-                    dmg = base
-                    if i == 2:
-                        dmg = int(base * 1.3)  # 2타 배율
-                    elif i == 3:
-                        dmg = int(base * 1.5)  # 3타 배율
-                    crit_roll = random.randint(1, 100)
-                    if crit_roll <= 10:  # 치명타
-                        dmg *= 2
-                        logs.append(f"{i}타: ⚡ 치명타! ({dmg})")
-                    else:
-                        logs.append(f"{i}타: ⚡ 명중 ({dmg})")
-                    total_damage += dmg
+            base = 10 + level
+            total_damage = 0
+            logs = []
+        
+            multiplier = 1      # 시작 배율 (1배)
+            hit = True
+            i = 1
+        
+            while hit and multiplier >= 1/64:  # 퍼지는 최소 배율 제한 (예: 1/64까지)
+                dmg = max(1, int(base * multiplier))  # 최소 1뎀 보장
+                crit_roll = random.randint(1, 100)
+                if crit_roll <= 10:  # 치명타 (10%)
+                    dmg *= 2
+                    logs.append(f"{i}타: ⚡ 치명타! ({dmg})")
                 else:
-                    logs.append(f"{i}타: ❌ 실패")
+                    logs.append(f"{i}타: ⚡ 명중 ({dmg})")
+        
+                total_damage += dmg
+        
+                # 1타, 2타는 확정 / 3타부터는 50% 확률
+                if i >= 2:
+                    hit = random.random() <= 0.5
+                i += 1
+                multiplier /= 2
 
+        
+
+        
         # 🏹 궁수 - 더블샷 (보스에게 2발)
         elif job == "궁수":
             header_msg = f"🏹 {user.name} 님의 **더블샷** 발동!"
