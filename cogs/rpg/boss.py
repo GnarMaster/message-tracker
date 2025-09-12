@@ -168,7 +168,7 @@ class Boss(commands.Cog):
             chances = [90, 45, 15]
             for i, chance in enumerate(chances, start=1):
                 if random.randint(1, 100) <= chance:
-                    base = 4 + level
+                    base = 10 + level
                     if random.randint(1, 100) <= 10:
                         dmg = base * 2
                         logs.append(f"{i}타: 🔥 치명타! ({dmg})")
@@ -191,7 +191,7 @@ class Boss(commands.Cog):
         elif job == "궁수":  # 더블샷
             header_msg = f"🏹 {user.mention} 님의 **더블샷** 발동!"
             for i in range(2):
-                base = 4 + level
+                base = 10 + level
                 roll = random.randint(1, 100)
                 if roll <= 10:
                     dmg = base * 2
@@ -205,7 +205,7 @@ class Boss(commands.Cog):
                 total_damage += dmg
         elif job == "도적":  # 스틸
             header_msg = f"🥷 {user.mention} 님이 보스를 **스틸**하였다!"
-            base = random.randint(1, 20) + level
+            base = (random.randint(1, 20) + level)*2
             logs.append(f"🥷 스틸: {base} 피해")
             total_damage += base
         elif job == "특수":  # 폭탄
