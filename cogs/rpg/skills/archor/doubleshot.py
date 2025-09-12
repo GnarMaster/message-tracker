@@ -52,7 +52,7 @@ class Archer(commands.Cog):
         if last_used and datetime.now() < last_used + timedelta(hours=4):
             remain = (last_used + timedelta(hours=4)) - datetime.now()
             minutes = remain.seconds // 60
-            await interaction.followup.send(f"⏳ 아직 쿨타임입니다! {minutes}분 뒤에 다시 시도하세요.")
+            await interaction.followup.send(f"⏳ 아직 쿨타임입니다! {minutes}분 뒤에 다시 시도하세요.", ephemeral=True)
             return
 
         sheet = get_sheet()
