@@ -86,9 +86,9 @@ class ThreeHits(commands.Cog):
         def calc_base_damage():
             crit_roll = random.randint(1, 100)
             if crit_roll <= 10:  # 10% 치명타
-                return 8 + (level * 2), "🔥 치명타!"
+                return 20 + (level * 2), "🔥 치명타!"
             else:
-                return 4 + level, "✅ 명중!"
+                return 10 + level, "✅ 명중!"
 
         chances = [90, 45, 15]  # 1타, 2타, 3타 확률
         logs = []
