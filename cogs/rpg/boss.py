@@ -98,6 +98,10 @@ class Boss(commands.Cog):
         if self.get_current_boss():
             await interaction.response.send_message("⚠️ 이미 보스가 소환되어 있습니다!", ephemeral=True)
             return
+
+        # ✅ 먼저 빠른 응답 (3초 제한 회피)
+        await interaction.response.send_message("⏳ 보스를 소환 중입니다...")
+
         hp = random.randint(500, 1557)
         boss_sheet.update(
             "A2:H2",
@@ -106,7 +110,7 @@ class Boss(commands.Cog):
 
         # ✅ 응답 예약 후 followup 사용
         intro = random.choice(BOSS_INTRO_MESSAGES)
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"{intro}\n"
             f"☠️ 보스 **{name}** 등장!\n"
             f"❤️ HP: ???\n"
