@@ -89,19 +89,19 @@ class Boss(commands.Cog):
     # ✅ 보스 소환
     @app_commands.command(name="보스소환", description="보스를 소환합니다.")
     async def 보스소환(self, interaction: discord.Interaction, name: str):
+
+        await interaction.response.defer(thinking=True)
+        
         # 채널 제한
         if interaction.channel.id != BOSS_CHANNEL_ID:
-            await interaction.response.send_message("❌ 보스는 전용 채널에서만 소환 가능합니다!", ephemeral=True)
+            await interaction.followup.send("❌ 보스는 전용 채널에서만 소환 가능합니다!", ephemeral=True)
             return
             
         boss_sheet = self.get_boss_sheet()
         if self.get_current_boss():
-            await interaction.response.send_message("⚠️ 이미 보스가 소환되어 있습니다!", ephemeral=True)
+            await interaction.followup.send("⚠️ 이미 보스가 소환되어 있습니다!", ephemeral=True)
             return
-
-        # ✅ 먼저 빠른 응답 (3초 제한 회피)
-        await interaction.response.send_message("⏳ 보스를 소환 중입니다...")
-
+        
         hp = random.randint(500, 1557)
         boss_sheet.update(
             "A2:H2",
