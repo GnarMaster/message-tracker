@@ -60,6 +60,16 @@ class Boss(commands.Cog):
             ws.append_row(["사용일시", "유저ID", "닉네임", "행동", "메모"])
             return ws
 
+    # ✅ Boss_History 시트 가져오기
+    def get_history_sheet(self):
+        sheet = get_sheet().spreadsheet
+        try:
+            return sheet.worksheet("Boss_History")
+        except:
+            ws = sheet.add_worksheet(title="Boss_History", rows=1000, cols=10)
+            ws.append_row(["보스이름", "HP_MAX", "소환일시", "처치일시", "마지막공격자", "1등", "2등", "3등", "기타참여자수"])
+            return ws
+
     def get_last_attack_time(self, user_id: str):
         log_sheet = self.get_log_sheet()
         records = log_sheet.get_all_records()
@@ -91,9 +101,13 @@ class Boss(commands.Cog):
             
         await interaction.response.defer()
         
-        hp = random.randint(700, 1500)
-        boss_sheet.resize(rows=1)  # 기존 데이터 초기화
-        boss_sheet.append_row([name, hp, hp, 200, 50, "", "", datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
+        hp = random.randint(500, 1557)
+        boss_sheet = self.get_boss_sheet()
+        boss_sheet.update(
+            "A2:H2",
+            [[name, hp, hp, 200, 50, "", "", datetime.now().strftime("%Y-%m-%d %H:%M:%S")]]
+        )
+
     
         # ✅ 응답 예약 후 followup 사용
         intro = random.choice(BOSS_INTRO_MESSAGES)
@@ -325,6 +339,20 @@ class Boss(commands.Cog):
         # 보스 종료
         boss_sheet = self.get_boss_sheet()
         boss_sheet.update_cell(2, 3, 0)  # HP_NOW = 0
+
+        # ✅ 보스 히스토리 기록
+        history = self.get_history_sheet()
+        history.append_row([
+            boss_name,
+            boss.get("HP_MAX", 0),
+            boss.get("소환일시", ""),
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            last_attacker,
+            ranking[0][0] if len(ranking) > 0 else "",
+            ranking[1][0] if len(ranking) > 1 else "",
+            ranking[2][0] if len(ranking) > 2 else "",
+            max(0, len(attack_dict) - 3)
+        ])
 
         # 출력 메시지
         msg = f"🎉 보스 **{boss_name}** 쓰러짐!\n\n🏆 누적 데미지 랭킹:\n"
