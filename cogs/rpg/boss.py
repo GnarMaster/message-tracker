@@ -1,3 +1,4 @@
+import random
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -9,6 +10,20 @@ from utils import get_sheet, safe_int
 # ✅ 보스 전용 채널 ID (환경변수에서 불러오기)
 BOSS_CHANNEL_ID = int(os.getenv("BOSS_CHANNEL_ID", 0))
 
+
+# ✅ 보스 등장 멘트 리스트
+BOSS_INTRO_MESSAGES = [
+    "⚡ 하늘이 갈라지고 천둥이 울려퍼진다...",
+    "🔥 대지가 흔들리며 지옥의 문이 열렸다!",
+    "🌩️ 어둠 속에서 거대한 기운이 다가온다...",
+    "💀 죽음의 기운이 감돌며 보스가 나타난다!",
+    "🌋 용암이 끓어오르며 괴물이 깨어난다!",
+    "❄️ 차가운 기운이 퍼지며 전장이 얼어붙는다!",
+    "🌪️ 폭풍이 몰아치며 그림자가 형체를 이룬다!",
+    "🩸 핏빛 안개 속에서 괴성이 울려퍼진다!",
+    "🌌 차원의 균열이 열리며 괴물이 걸어나온다!",
+    "☠️ 이 땅에 재앙이 깃든다... 보스가 등장했다!"
+]
 
 class Boss(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -81,10 +96,14 @@ class Boss(commands.Cog):
         boss_sheet.append_row([name, hp, hp, 200, 50, "", "", datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
     
         # ✅ 응답 예약 후 followup 사용
-        
+        intro = random.choice(BOSS_INTRO_MESSAGES)
         await interaction.followup.send(
-            f"🐉 보스 **{name}** 등장!\nHP: ???\n보상: 막타 200 EXP, 1등 150 / 2등 125 / 3등 100 / 나머지 50"
+            f"{intro}\n"
+            f"☠️ 보스 **{name}** 등장!\n"
+            f"❤️ HP: ???\n"
+            f"🎁 보상: 막타 200 EXP | 1등 150 | 2등 125 | 3등 100 | 참가자 50"
         )
+
 
     
     # ✅ 보스 공격
