@@ -121,9 +121,11 @@ class Boss(commands.Cog):
     # ✅ 보스 공격
     @app_commands.command(name="보스공격", description="현재 보스를 공격합니다. (쿨타임 2시간)")
     async def 보스공격(self, interaction: discord.Interaction):
+
+        await interaction.response.defer(thinking=True)
         # 채널 제한
         if interaction.channel.id != BOSS_CHANNEL_ID:
-            await interaction.response.send_message("❌ 보스는 전용 채널에서만 공격 가능합니다!", ephemeral=True)
+            await interaction.followup.send("❌ 보스는 전용 채널에서만 공격 가능합니다!", ephemeral=True)
             return
 
         user_id = str(interaction.user.id)
@@ -131,7 +133,7 @@ class Boss(commands.Cog):
         boss = self.get_current_boss()
 
         if not boss:
-            await interaction.response.send_message("⚠️ 현재 소환된 보스가 없습니다.", ephemeral=True)
+            await interaction.followup.send("⚠️ 현재 소환된 보스가 없습니다.", ephemeral=True)
             return
 
         # 쿨타임 확인
@@ -139,7 +141,7 @@ class Boss(commands.Cog):
         if last_used and datetime.now() < last_used + timedelta(hours=2):
             remain = (last_used + timedelta(hours=2)) - datetime.now()
             minutes = remain.seconds // 60
-            await interaction.response.send_message(f"⏳ 아직 쿨타임입니다! {minutes}분 뒤 가능")
+            await interaction.followup.send(f"⏳ 아직 쿨타임입니다! {minutes}분 뒤 가능")
             return
 
         # 유저 직업 가져오기
@@ -151,10 +153,8 @@ class Boss(commands.Cog):
                 user_row = (idx, row)
                 break
         if not user_row:
-            await interaction.response.send_message("⚠️ 당신의 데이터가 없습니다.", ephemeral=True)
+            await interaction.followup.send("⚠️ 당신의 데이터가 없습니다.", ephemeral=True)
             return
-
-        await interaction.response.defer()  # ✅ 응답 예약
         
         job = user_row[1].get("직업", "백수")
         level = safe_int(user_row[1].get("레벨", 1))
