@@ -69,17 +69,19 @@ class Boss(commands.Cog):
             await interaction.response.send_message("❌ 보스는 전용 채널에서만 소환 가능합니다!", ephemeral=True)
             return
 
+        await interaction.response.defer()
+        
         boss_sheet = self.get_boss_sheet()
         if self.get_current_boss():
             await interaction.response.send_message("⚠️ 이미 보스가 소환되어 있습니다!", ephemeral=True)
             return
 
-        hp = random.randint(3000, 8000)
+        hp = random.randint(700, 1500)
         boss_sheet.resize(rows=1)  # 기존 데이터 초기화
         boss_sheet.append_row([name, hp, hp, 200, 50, "", "", datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
     
         # ✅ 응답 예약 후 followup 사용
-        await interaction.response.defer()
+        
         await interaction.followup.send(
             f"🐉 보스 **{name}** 등장!\nHP: ???\n보상: 막타 200 EXP, 1등 150 / 2등 125 / 3등 100 / 나머지 50"
         )
