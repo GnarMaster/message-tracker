@@ -70,7 +70,7 @@ class Boss(commands.Cog):
             return
 
         if not interaction.user.guild_permissions.administrator:
-            await interaction.response.send_message("❌ 관리자만 사용 가능합니다.", ephemeral=True)
+            await interaction.response.send_message("❌ 관리자만 사용 가능합니다!", ephemeral=True)
             return
 
         boss_sheet = self.get_boss_sheet()
@@ -94,12 +94,14 @@ class Boss(commands.Cog):
             await interaction.response.send_message("❌ 보스는 전용 채널에서만 공격 가능합니다!", ephemeral=True)
             return
 
+        await interaction.response.defer()  # ✅ 응답 예약
+
         user_id = str(interaction.user.id)
         username = interaction.user.name
         boss = self.get_current_boss()
 
         if not boss:
-            await interaction.response.send_message("⚠️ 현재 소환된 보스가 없습니다.", ephemeral=True)
+            await interaction.followup.send("⚠️ 현재 소환된 보스가 없습니다.")
             return
 
         # 쿨타임 확인
@@ -107,7 +109,7 @@ class Boss(commands.Cog):
         if last_used and datetime.now() < last_used + timedelta(hours=2):
             remain = (last_used + timedelta(hours=2)) - datetime.now()
             minutes = remain.seconds // 60
-            await interaction.response.send_message(f"⏳ 아직 쿨타임입니다! {minutes}분 뒤 가능", ephemeral=True)
+            await interaction.followup.send(f"⏳ 아직 쿨타임입니다! {minutes}분 뒤 가능")
             return
 
         # 유저 직업 가져오기
@@ -119,7 +121,7 @@ class Boss(commands.Cog):
                 user_row = (idx, row)
                 break
         if not user_row:
-            await interaction.response.send_message("⚠️ 당신의 데이터가 없습니다.", ephemeral=True)
+            await interaction.followup.send("⚠️ 당신의 데이터가 없습니다.")
             return
 
         job = user_row[1].get("직업", "백수")
@@ -152,7 +154,7 @@ class Boss(commands.Cog):
         if hp_now <= 0:
             await self.reward_boss(interaction, attack_dict, user_id, boss.get("보스이름"))
         else:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"{header_msg}\n{detail_log}\n👉 총합: {dmg} 피해\n남은 HP: ???"
             )
 
@@ -268,7 +270,7 @@ class Boss(commands.Cog):
             msg += f"{medals[i]} <@{uid}> ({dmg} 피해) +{rewards[uid]} EXP\n"
 
         msg += f"\n⚔️ 막타: <@{last_attacker}> +200 EXP\n🙌 기타 참여자 전원 +50 EXP"
-        await interaction.response.send_message(msg)
+        await interaction.followup.send(msg)  # ✅ 수정: followup 사용
 
 
 async def setup(bot):
