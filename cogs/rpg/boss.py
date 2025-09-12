@@ -102,13 +102,11 @@ class Boss(commands.Cog):
         await interaction.response.defer()
         
         hp = random.randint(500, 1557)
-        boss_sheet = self.get_boss_sheet()
         boss_sheet.update(
             "A2:H2",
             [[name, hp, hp, 200, 50, "", "", datetime.now().strftime("%Y-%m-%d %H:%M:%S")]]
         )
 
-    
         # ✅ 응답 예약 후 followup 사용
         intro = random.choice(BOSS_INTRO_MESSAGES)
         await interaction.followup.send(
@@ -140,7 +138,7 @@ class Boss(commands.Cog):
         if last_used and datetime.now() < last_used + timedelta(hours=2):
             remain = (last_used + timedelta(hours=2)) - datetime.now()
             minutes = remain.seconds // 60
-            await interaction.followup.send(f"⏳ 아직 쿨타임입니다! {minutes}분 뒤 가능")
+            await interaction.response.send_message(f"⏳ 아직 쿨타임입니다! {minutes}분 뒤 가능")
             return
 
         # 유저 직업 가져오기
@@ -152,7 +150,7 @@ class Boss(commands.Cog):
                 user_row = (idx, row)
                 break
         if not user_row:
-            await interaction.followup.send("⚠️ 당신의 데이터가 없습니다.", ephemeral=True)
+            await interaction.response.send_message("⚠️ 당신의 데이터가 없습니다.", ephemeral=True)
             return
 
         await interaction.response.defer()  # ✅ 응답 예약
