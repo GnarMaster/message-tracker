@@ -157,58 +157,94 @@ class Boss(commands.Cog):
                 f"{header_msg}\n{detail_log}\n👉 총합: {dmg} 피해\n남은 HP: ???"
             )
 
-    # ✅ 직업별 데미지 계산 (보스용)
+    # ✅ 직업별 데미지 계산 (보스용, PvP 스킬 그대로 반영)
     def calc_damage(self, job: str, level: int, user: discord.Member):
         logs = []
         total_damage = 0
         header_msg = ""
 
-        if job == "전사":  # 삼연격
+        # ⚔️ 전사 - 삼연격
+        if job == "전사":
             header_msg = f"⚔️ {user.mention} 님이 보스에게 **삼연격**을 시전했다!"
-            chances = [90, 45, 15]
+            chances = [90, 45, 15]  # 1타, 2타, 3타 확률
             for i, chance in enumerate(chances, start=1):
-                if random.randint(1, 100) <= chance:
+                roll = random.randint(1, 100)
+                if roll <= chance:
                     base = 10 + level
-                    if random.randint(1, 100) <= 10:
-                        dmg = base * 2
+                    dmg = base
+                    crit_roll = random.randint(1, 100)
+                    if crit_roll <= 10:  # 치명타 10%
+                        dmg *= 2
                         logs.append(f"{i}타: 🔥 치명타! ({dmg})")
                     else:
-                        dmg = base
                         logs.append(f"{i}타: ✅ 명중 ({dmg})")
                     total_damage += dmg
                 else:
                     logs.append(f"{i}타: ❌ 실패")
-        elif job == "마법사":  # 체라
+
+        # 🔮 마법사 - 체인라이트닝 (모든 타격 보스 집중)
+        elif job == "마법사":
             header_msg = f"🔮 {user.mention} 님의 **체인라이트닝** 발동!"
-            base = 10 + level
-            dmg = base + random.randint(0, level)
-            if random.randint(1, 100) <= 10:
-                dmg *= 2
-                logs.append(f"⚡ 체라: 치명타! ({dmg})")
-            else:
-                logs.append(f"⚡ 체라: {dmg}")
-            total_damage += dmg
-        elif job == "궁수":  # 더블샷
+            chances = [90, 45, 15]
+            for i, chance in enumerate(chances, start=1):
+                roll = random.randint(1, 100)
+                if roll <= chance:
+                    base = 10 + level
+                    dmg = base
+                    if i == 2:
+                        dmg = int(base * 1.3)  # 2타 배율
+                    elif i == 3:
+                        dmg = int(base * 1.5)  # 3타 배율
+                    crit_roll = random.randint(1, 100)
+                    if crit_roll <= 10:  # 치명타
+                        dmg *= 2
+                        logs.append(f"{i}타: ⚡ 치명타! ({dmg})")
+                    else:
+                        logs.append(f"{i}타: ⚡ 명중 ({dmg})")
+                    total_damage += dmg
+                else:
+                    logs.append(f"{i}타: ❌ 실패")
+
+        # 🏹 궁수 - 더블샷 (보스에게 2발)
+        elif job == "궁수":
             header_msg = f"🏹 {user.mention} 님의 **더블샷** 발동!"
             for i in range(2):
                 base = 10 + level
                 roll = random.randint(1, 100)
                 if roll <= 10:
                     dmg = base * 2
-                    logs.append(f"🎯 {i+1}타: 치명타! ({dmg})")
+                    logs.append(f"{i+1}타: 🎯 치명타! ({dmg})")
                 elif roll <= 90:
                     dmg = base
-                    logs.append(f"🎯 {i+1}타: 명중 ({dmg})")
+                    logs.append(f"{i+1}타: 🎯 명중 ({dmg})")
                 else:
                     dmg = 0
-                    logs.append(f"🎯 {i+1}타: 빗나감")
+                    logs.append(f"{i+1}타: ❌ 빗나감")
                 total_damage += dmg
-        elif job == "도적":  # 스틸
+
+        # 🥷 도적 - 스틸
+        elif job == "도적":
             header_msg = f"🥷 {user.mention} 님이 보스를 **스틸**하였다!"
-            base = (random.randint(1, 20) + level)*2
-            logs.append(f"🥷 스틸: {base} 피해")
-            total_damage += base
-        elif job == "특수":  # 폭탄
+            roll = random.uniform(0, 100)
+            if roll <= 80:  # 1~10
+                dmg = random.randint(1, 10) + level
+            elif roll <= 90:  # 실패
+                dmg = 0
+            elif roll <= 99:  # 11~19
+                dmg = random.randint(11, 19) + level
+            else:
+                jackpot_roll = random.uniform(0, 1)
+                if jackpot_roll <= 0.001:
+                    dmg = 200 + level
+                elif jackpot_roll <= 0.005:
+                    dmg = 100 + level
+                else:
+                    dmg = 50 + level
+            logs.append(f"스틸 피해: {dmg}")
+            total_damage += dmg
+
+        # 💣 특수 - 폭탄
+        elif job == "특수":
             header_msg = f"💣 {user.mention} 님이 보스에게 **폭탄**을 던졌다!"
             roll = random.uniform(0, 100)
             if roll <= 70:
@@ -218,18 +254,26 @@ class Boss(commands.Cog):
                 dmg = random.randint(33, 47) + level
                 logs.append(f"💥 강력 폭발 ({dmg})")
             elif roll <= 99:
-                dmg = random.randint(55, 90) + level
-                logs.append(f"🔥 치명적 폭발 ({dmg})")
+                sub_roll = random.uniform(0, 100)
+                if sub_roll <= 1:
+                    dmg = 300 + level
+                    logs.append(f"🌋 전설적 폭발 ({dmg})")
+                else:
+                    dmg = random.randint(55, 90) + level
+                    logs.append(f"🔥 치명적 폭발 ({dmg})")
             else:
                 dmg = 0
                 logs.append(f"☠️ 자폭! (데미지 없음)")
             total_damage += dmg
+
+        # 👊 기본 평타
         else:
             header_msg = f"👊 {user.mention} 님의 평타!"
             total_damage = random.randint(10, 30)
             logs.append(f"평타 ({total_damage})")
 
         return total_damage, "\n".join(logs), header_msg
+    
 
     # ✅ 보스 보상 처리
     async def reward_boss(self, interaction: discord.Interaction, attack_dict: dict, last_attacker: str, boss_name: str):
