@@ -62,15 +62,11 @@ class Boss(commands.Cog):
         log_sheet.append_row([now_str, user_id, username, "보스공격", f"{dmg} 피해 {note}"])
 
     # ✅ 보스 소환
-    @app_commands.command(name="보스소환", description="보스를 소환합니다. (관리자 전용)")
+    @app_commands.command(name="보스소환", description="보스를 소환합니다.")
     async def 보스소환(self, interaction: discord.Interaction, name: str):
         # 채널 제한
         if interaction.channel.id != BOSS_CHANNEL_ID:
             await interaction.response.send_message("❌ 보스는 전용 채널에서만 소환 가능합니다!", ephemeral=True)
-            return
-
-        if not interaction.user.guild_permissions.administrator:
-            await interaction.response.send_message("❌ 관리자만 사용 가능합니다!", ephemeral=True)
             return
 
         boss_sheet = self.get_boss_sheet()
@@ -81,11 +77,14 @@ class Boss(commands.Cog):
         hp = random.randint(3000, 8000)
         boss_sheet.resize(rows=1)  # 기존 데이터 초기화
         boss_sheet.append_row([name, hp, hp, 200, 50, "", "", datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
-
-        await interaction.response.send_message(
+    
+        # ✅ 응답 예약 후 followup 사용
+        await interaction.response.defer()
+        await interaction.followup.send(
             f"🐉 보스 **{name}** 등장!\nHP: ???\n보상: 막타 200 EXP, 1등 150 / 2등 125 / 3등 100 / 나머지 50"
         )
 
+    
     # ✅ 보스 공격
     @app_commands.command(name="보스공격", description="현재 보스를 공격합니다. (쿨타임 2시간)")
     async def 보스공격(self, interaction: discord.Interaction):
