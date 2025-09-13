@@ -83,7 +83,7 @@ class Steal(commands.Cog):
         if last_used and datetime.now() < last_used + timedelta(hours=4):
             remain = (last_used + timedelta(hours=4)) - datetime.now()
             minutes = remain.seconds // 60
-            await interaction.response.followup.send(f"⏳ 아직 쿨타임입니다! {minutes}분 뒤에 다시 시도하세요.", ephemeral=True)
+            await interaction.followup.send(f"⏳ 아직 쿨타임입니다! {minutes}분 뒤에 다시 시도하세요.", ephemeral=True)
             return
 
         sheet = get_sheet()
@@ -97,10 +97,10 @@ class Steal(commands.Cog):
                 target_row = (idx, row)
 
         if not user_row:
-            await interaction.response.followup.send("⚠️ 당신의 데이터가 없습니다.", ephemeral=True)
+            await interaction.followup.send("⚠️ 당신의 데이터가 없습니다.", ephemeral=True)
             return
         if not target_row:
-            await interaction.response.followup.send("⚠️ 대상 유저의 데이터가 없습니다.", ephemeral=True)
+            await interaction.followup.send("⚠️ 대상 유저의 데이터가 없습니다.", ephemeral=True)
             return
 
         user_idx, user_data = user_row
