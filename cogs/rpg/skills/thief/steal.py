@@ -97,17 +97,17 @@ class Steal(commands.Cog):
                 target_row = (idx, row)
 
         if not user_row:
-            await interaction.followup.send("⚠️ 당신의 데이터가 없습니다.")
+            await interaction.followup.send("⚠️ 당신의 데이터가 없습니다.", ephemeral=True)
             return
         if not target_row:
-            await interaction.followup.send("⚠️ 대상 유저의 데이터가 없습니다.")
+            await interaction.followup.send("⚠️ 대상 유저의 데이터가 없습니다.", ephemeral=True)
             return
 
         user_idx, user_data = user_row
         target_idx, target_data = target_row
 
         if user_data.get("직업") != "도적":
-            await interaction.followup.send("❌ 도적만 사용할 수 있는 스킬입니다!")
+            await interaction.followup.send("❌ 도적만 사용할 수 있는 스킬입니다!", ephemeral=True)
             return
 
         # ✅ 훔칠 양 계산
