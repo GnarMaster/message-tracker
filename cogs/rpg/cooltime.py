@@ -30,10 +30,12 @@ class CoolTime(commands.Cog):
         return None
 
     @app_commands.command(name="쿨타임", description="내가 다음 스킬을 사용할 수 있을 때까지 남은 시간을 확인합니다.")
-    async def 쿨타임(self, interaction: discord.Interaction):
+    async def 쿨타임(self, interaction: discord.Interaction):   # ✅ 들여쓰기 수정됨
         user_id = str(interaction.user.id)
 
-        # Skill_Log에서 본인 직업 스킬만 확인
+        # ✅ 응답 예약 (ephemeral=True → 본인만 보이게)
+        await interaction.response.defer(ephemeral=True)
+
         log_sheet = self.get_skill_log_sheet()
         records = log_sheet.get_all_records()
         skills = ["삼연격", "체라", "더블샷", "스틸", "폭탄"]
@@ -53,9 +55,8 @@ class CoolTime(commands.Cog):
                 result.append(f"✅ {skill}: 아직 사용한 적 없음")
 
         msg = "\n".join(result)
-        await interaction.response.send_message(
-            f"📊 **{interaction.user.name}** 님의 스킬 쿨타임 현황\n{msg}",
-            ephemeral=True
+        await interaction.followup.send(
+            f"📊 **{interaction.user.name}** 님의 스킬 쿨타임 현황\n{msg}"
         )
 
 async def setup(bot):
