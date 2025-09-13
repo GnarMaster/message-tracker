@@ -71,8 +71,11 @@ class Steal(commands.Cog):
         user_id = str(interaction.user.id)
         target_id = str(target.id)
 
+         # ⚡ 먼저 응답 예약
+        await interaction.response.defer()
+        
         if user_id == target_id:
-            await interaction.response.send_message("❌ 자신을 스틸할 수는 없습니다!", ephemeral=True)
+            await interaction.followup.send("❌ 자신을 스틸할 수는 없습니다!", ephemeral=True)
             return
 
         # 최근 사용 기록 확인 (쿨타임 4시간)
@@ -80,7 +83,7 @@ class Steal(commands.Cog):
         if last_used and datetime.now() < last_used + timedelta(hours=4):
             remain = (last_used + timedelta(hours=4)) - datetime.now()
             minutes = remain.seconds // 60
-            await interaction.response.send_message(f"⏳ 아직 쿨타임입니다! {minutes}분 뒤에 다시 시도하세요.", ephemeral=True)
+            await interaction.response.followup.send(f"⏳ 아직 쿨타임입니다! {minutes}분 뒤에 다시 시도하세요.", ephemeral=True)
             return
 
         sheet = get_sheet()
@@ -94,21 +97,20 @@ class Steal(commands.Cog):
                 target_row = (idx, row)
 
         if not user_row:
-            await interaction.response.send_message("⚠️ 당신의 데이터가 없습니다.", ephemeral=True)
+            await interaction.response.followup.send("⚠️ 당신의 데이터가 없습니다.", ephemeral=True)
             return
         if not target_row:
-            await interaction.response.send_message("⚠️ 대상 유저의 데이터가 없습니다.", ephemeral=True)
+            await interaction.response.followup.send("⚠️ 대상 유저의 데이터가 없습니다.", ephemeral=True)
             return
 
         user_idx, user_data = user_row
         target_idx, target_data = target_row
 
         if user_data.get("직업") != "도적":
-            await interaction.response.send_message("❌ 도적만 사용할 수 있는 스킬입니다!", ephemeral=True)
+            await interaction.followup.send("❌ 도적만 사용할 수 있는 스킬입니다!", ephemeral=True)
             return
 
-        # ⚡ 먼저 응답 예약
-        await interaction.response.defer()
+       
 
         # ✅ 훔칠 양 계산
         current_level = safe_int(user_data.get("레벨", 1))
@@ -118,7 +120,7 @@ class Steal(commands.Cog):
             # 실패 처리
             self.log_skill_use(user_id, interaction.user.name, "스틸", f"실패 (대상: {target.name})")
             await interaction.followup.send(
-                f"🥷 {interaction.user.name} 님이 {target.mention} 님을 스틸하려 했지만 실패했습니다…"
+                f"🥷 {interaction.user.name} 님이 {target.mention} 님을 스틸하려 했지만 실패했습니다…", ephemeral=False
             )
             return
 
@@ -140,7 +142,7 @@ class Steal(commands.Cog):
         # ✅ 성공 메시지
         await interaction.followup.send(
             f"🥷 {interaction.user.name}님이 {target.mention} 님의 경험치를 스틸하였습니다!\n"
-            f"💀 {target.name} -{base+current_level} exp (현재 경험치: {new_target_exp})"
+            f"💀 {target.name} -{base+current_level} exp (현재 경험치: {new_target_exp})", ephemeral=False
         )
 
 async def setup(bot):
