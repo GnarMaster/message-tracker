@@ -29,34 +29,52 @@ class CoolTime(commands.Cog):
                     return None
         return None
 
-    @app_commands.command(name="쿨타임", description="내가 다음 스킬을 사용할 수 있을 때까지 남은 시간을 확인합니다.")
-    async def 쿨타임(self, interaction: discord.Interaction):   # ✅ 들여쓰기 수정됨
+    @app_commands.command(name="쿨타임", description="내 직업 스킬의 쿨타임을 확인합니다.")
+    async def 쿨타임(self, interaction: discord.Interaction):
         user_id = str(interaction.user.id)
 
-        # ✅ 응답 예약 (ephemeral=True → 본인만 보이게)
+        # ✅ 응답 예약
         await interaction.response.defer(ephemeral=True)
 
-        log_sheet = self.get_skill_log_sheet()
-        records = log_sheet.get_all_records()
-        skills = ["삼연격", "체라", "더블샷", "스틸", "폭탄"]
+        # 내 직업 확인
+        sheet = get_sheet()
+        records = sheet.get_all_records()
+        my_job = None
+        for row in records:
+            if str(row.get("유저 ID", "")) == user_id:
+                my_job = row.get("직업", "백수")
+                break
 
-        result = []
-        for skill in skills:
-            last_used = self.get_last_skill_time(user_id, skill)
-            if last_used:
-                next_available = last_used + timedelta(hours=4)
-                if datetime.now() < next_available:
-                    remain = next_available - datetime.now()
-                    minutes = remain.seconds // 60
-                    result.append(f"⏳ {skill}: {minutes}분 남음")
-                else:
-                    result.append(f"✅ {skill}: 사용 가능")
+        # 직업별 스킬 매핑
+        job_skills = {
+            "전사": "삼연격",
+            "마법사": "체라",
+            "궁수": "더블샷",
+            "도적": "스틸",
+            "특수": "폭탄"
+        }
+
+        if my_job not in job_skills:
+            await interaction.followup.send("⚠️ 넌 백수다!")
+            return
+
+        skill = job_skills[my_job]
+
+        # 마지막 사용 시간 확인
+        last_used = self.get_last_skill_time(user_id, skill)
+        if last_used:
+            next_available = last_used + timedelta(hours=4)
+            if datetime.now() < next_available:
+                remain = next_available - datetime.now()
+                minutes = remain.seconds // 60
+                msg = f"⏳ {skill}: {minutes}분 남음"
             else:
-                result.append(f"✅ {skill}: 아직 사용한 적 없음")
+                msg = f"✅ {skill}: 사용 가능"
+        else:
+            msg = f"✅ {skill}: 아직 사용한 적 없음"
 
-        msg = "\n".join(result)
         await interaction.followup.send(
-            f"📊 **{interaction.user.name}** 님의 스킬 쿨타임 현황\n{msg}"
+            f"📊 **{interaction.user.name}** 님 ({my_job}) 의 스킬 쿨타임 현황\n{msg}"
         )
 
 async def setup(bot):
