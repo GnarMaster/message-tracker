@@ -67,8 +67,6 @@ class Archer(commands.Cog):
             if str(row.get("유저 ID", "")) == str(target2.id):
                 row2 = (idx, row)
                 
-        if target1.id == target2.id and row1:
-            row2 = row1
         if not user_row:
             await interaction.followup.send("⚠️ 당신의 데이터가 없습니다.")
             return
