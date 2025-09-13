@@ -105,8 +105,13 @@ class Archer(commands.Cog):
         # 두 번째 타겟
         dmg2, msg2 = calc_damage()
         idx2, data2 = row2
-        new_exp2 = safe_int(data2.get("현재레벨경험치", 0)) - dmg2
-        sheet.update_cell(idx2, 11, new_exp2)
+
+        if idx1 == idx2:
+            new_exp2 = new_exp1 - dmg2
+            sheet.update_cell(idx2, 11, new_exp2)
+        else :
+            new_exp2 = safe_int(data2.get("현재레벨경험치", 0)) - dmg2
+            sheet.update_cell(idx2, 11, new_exp2)
 
         # 로그 기록
         self.log_skill_use(
