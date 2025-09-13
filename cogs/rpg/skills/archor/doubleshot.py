@@ -68,15 +68,15 @@ class Archer(commands.Cog):
                 row2 = (idx, row)
                 
         if not user_row:
-            await interaction.followup.send("⚠️ 당신의 데이터가 없습니다.")
+            await interaction.followup.send("⚠️ 당신의 데이터가 없습니다.", ephemeral=True)
             return
         if not row1 or not row2:
-            await interaction.followup.send("⚠️ 대상 유저의 데이터가 없습니다.")
+            await interaction.followup.send("⚠️ 대상 유저의 데이터가 없습니다.", ephemeral=True)
             return
 
         # 직업 확인 (궁수)
         if user_row[1].get("직업") != "궁수":
-            await interaction.followup.send("❌ 궁수만 사용할 수 있는 스킬입니다!")
+            await interaction.followup.send("❌ 궁수만 사용할 수 있는 스킬입니다!", ephemeral=True)
             return
 
         level = safe_int(user_row[1].get("레벨", 1))
