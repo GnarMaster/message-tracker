@@ -76,7 +76,7 @@ class Steal(commands.Cog):
             return
 
         # ⚡ 먼저 응답 예약
-        await interaction.response.defer(ephemeral=False)
+        await interaction.response.defer()
 
         # 최근 사용 기록 확인 (쿨타임 4시간)
         last_used = self.get_last_skill_time(user_id, "스틸")
