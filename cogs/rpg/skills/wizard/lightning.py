@@ -92,10 +92,10 @@ class Mage(commands.Cog):
 
         # 기본뎀 계산
         if random.randint(1, 100) <= 10:  # 첫타 대성공
-            base_damage = 20 + (level * 2)
+            base_damage = 12 + (level * 2)
             msg_base = "🔥 대성공!!!"
         else:
-            base_damage = 10 + level
+            base_damage = 6 + level
             msg_base = "✅ 성공"
 
         damage_logs = []
