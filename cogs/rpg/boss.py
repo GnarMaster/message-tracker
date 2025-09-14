@@ -255,7 +255,7 @@ class Boss(commands.Cog):
                 if roll <= 20:
                     dmg = base * 2
                     logs.append(f"{i+1}타: 🎯 치명타! ({dmg})")
-                else roll <= 90:
+                elif roll <= 90:
                     dmg = base
                     logs.append(f"{i+1}타: 🎯 명중 ({dmg})")
                 total_damage += dmg
