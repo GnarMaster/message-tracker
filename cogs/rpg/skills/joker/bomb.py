@@ -47,15 +47,15 @@ class Bomb(commands.Cog):
     def get_bomb_damage(self, level: int):
         roll = random.uniform(0, 100)
         if roll <= 70:   # 70%
-            return random.randint(15, 25) + level, "normal"
+            return random.randint(20, 30) + level, "normal"
         elif roll <= 90: # 20%
-            return random.randint(33, 47) + level, "medium"
+            return random.randint(45, 60) + level, "medium"
         elif roll <= 99: # 9%
             sub_roll = random.uniform(0,100)
             if sub_roll <=1:
                 return 300 + level, "LEGEND"
             else : 
-                return random.randint(55, 90) + level, "critical"
+                return random.randint(80, 100) + level, "critical"
         else:            # 1% 자폭
             return -40, "self"
 
