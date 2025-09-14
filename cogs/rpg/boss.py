@@ -218,7 +218,7 @@ class Boss(commands.Cog):
         # 🔮 마법사 - 체인라이트닝 (모든 타격 보스 집중)
         elif job == "마법사":
             header_msg = f"🔮 {user.name} 님의 **체인라이트닝** 발동!"
-            base = 10 + level
+            base = 6 + level
             total_damage = 0
             logs = []
         
@@ -252,15 +252,12 @@ class Boss(commands.Cog):
             for i in range(2):
                 base = 10 + level
                 roll = random.randint(1, 100)
-                if roll <= 10:
+                if roll <= 20:
                     dmg = base * 2
                     logs.append(f"{i+1}타: 🎯 치명타! ({dmg})")
-                elif roll <= 90:
+                else roll <= 90:
                     dmg = base
                     logs.append(f"{i+1}타: 🎯 명중 ({dmg})")
-                else:
-                    dmg = 0
-                    logs.append(f"{i+1}타: ❌ 빗나감")
                 total_damage += dmg
 
         # 🥷 도적 - 스틸
@@ -289,10 +286,10 @@ class Boss(commands.Cog):
             header_msg = f"💣 {user.name} 님이 보스에게 **폭탄**을 던졌다!"
             roll = random.uniform(0, 100)
             if roll <= 70:
-                dmg = random.randint(15, 25) + level
+                dmg = random.randint(20, 30) + level
                 logs.append(f"💣 폭탄 명중 ({dmg})")
             elif roll <= 90:
-                dmg = random.randint(33, 47) + level
+                dmg = random.randint(45, 60) + level
                 logs.append(f"💥 강력 폭발 ({dmg})")
             elif roll <= 99:
                 sub_roll = random.uniform(0, 100)
@@ -300,7 +297,7 @@ class Boss(commands.Cog):
                     dmg = 300 + level
                     logs.append(f"🌋 전설적 폭발 ({dmg})")
                 else:
-                    dmg = random.randint(55, 90) + level
+                    dmg = random.randint(80, 100) + level
                     logs.append(f"🔥 치명적 폭발 ({dmg})")
             else:
                 dmg = 0
