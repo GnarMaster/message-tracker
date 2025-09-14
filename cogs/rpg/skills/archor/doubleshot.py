@@ -58,6 +58,7 @@ class Archer(commands.Cog):
         sheet = get_sheet()
         records = sheet.get_all_records()
 
+        
         user_row, row1, row2 = None, None, None
         for idx, row in enumerate(records, start=2):
             if str(row.get("유저 ID", "")) == user_id:
