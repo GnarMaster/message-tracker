@@ -184,7 +184,7 @@ class Boss(commands.Cog):
 
         # ✅ 출력
         if hp_now <= 0:
-            await self.reward_boss(interaction, attack_dict, user_id, boss.get("보스이름"))
+            await self.reward_boss(interaction, attack_dict, user_id, boss)
         else:
             await interaction.followup.send(
                 f"{header_msg}\n{detail_log}\n👉 총합: {dmg} 피해\n남은 HP: ???"
@@ -268,11 +268,11 @@ class Boss(commands.Cog):
             header_msg = f"🥷 {user.name} 님이 보스를 **스틸**하였다!"
             roll = random.uniform(0, 100)
             if roll <= 80:  # 1~10
-                dmg = random.randint(1, 10) + level
+                dmg = (random.randint(1, 10) + level)* 2
             elif roll <= 90:  # 실패
                 dmg = 0
             elif roll <= 99:  # 11~19
-                dmg = random.randint(11, 19) + level
+                dmg = (random.randint(11, 19) + level)* 2
             else:
                 jackpot_roll = random.uniform(0, 1)
                 if jackpot_roll <= 0.001:
@@ -280,7 +280,7 @@ class Boss(commands.Cog):
                 elif jackpot_roll <= 0.005:
                     dmg = 100 + level
                 else:
-                    dmg = 50 + level
+                    dmg = (50 + level)* 2
             logs.append(f"스틸 피해: {dmg}")
             total_damage += dmg
 
@@ -310,17 +310,18 @@ class Boss(commands.Cog):
         # 👊 기본 평타
         else:
             header_msg = f"👊 {user.name} 님의 평타!"
-            total_damage = random.randint(10, 30)
+            total_damage = random.randint(5, 10)
             logs.append(f"평타 ({total_damage})")
 
         return total_damage, "\n".join(logs), header_msg
     
 
     # ✅ 보스 보상 처리
-    async def reward_boss(self, interaction: discord.Interaction, attack_dict: dict, last_attacker: str, boss_name: str):
+    async def reward_boss(self, interaction: discord.Interaction, attack_dict: dict, last_attacker: str, boss: dict):
         sheet = get_sheet()
         records = sheet.get_all_records()
 
+        boss_name = boss.get("보스이름","???")
         # 누적 데미지 랭킹
         ranking = sorted(attack_dict.items(), key=lambda x: -x[1])
         rewards = {}
