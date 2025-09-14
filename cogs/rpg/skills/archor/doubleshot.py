@@ -84,7 +84,7 @@ class Archer(commands.Cog):
         # 데미지 계산 함수
         def calc_damage():
             base = 4 + level
-            crit_chance = 10
+            crit_chance = 20
             miss_chance = max(0, 10 - (level // 5))   # 빗나감 확률 = 10 - 레벨/5 %
             hit_chance = 100 - crit_chance - miss_chance
             
