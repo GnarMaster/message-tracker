@@ -102,7 +102,7 @@ class Boss(commands.Cog):
             await interaction.followup.send("⚠️ 이미 보스가 소환되어 있습니다!", ephemeral=True)
             return
         
-        hp = random.randint(222, 555)
+        hp = random.randint(600, 3000)
         boss_sheet.update(
             "A2:H2",
             [[name, hp, hp, 200, 50, "", "", datetime.now().strftime("%Y-%m-%d %H:%M:%S")]]
