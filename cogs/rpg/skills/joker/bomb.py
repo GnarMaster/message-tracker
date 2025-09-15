@@ -4,7 +4,7 @@ from discord.ext import commands
 from datetime import datetime, timedelta
 import random
 
-from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill
+from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter
 
 
 class Bomb(commands.Cog):
@@ -50,7 +50,7 @@ class Bomb(commands.Cog):
             sub_roll = random.uniform(0,100)
             if sub_roll <=1:
                 return 300 + level, "LEGEND"
-            else : 
+            else: 
                 return random.randint(80, 100) + level, "critical"
         else:            # 1% 자폭
             return -40, "self"
@@ -119,6 +119,7 @@ class Bomb(commands.Cog):
         damage, dmg_type = self.get_bomb_damage(level)
 
         if dmg_type == "self":
+            # ✅ 자폭은 반격 무시
             new_user_exp = safe_int(user_data.get("현재레벨경험치", 0)) + damage
             sheet.update_cell(user_idx, 11, new_user_exp)
 
@@ -128,29 +129,54 @@ class Bomb(commands.Cog):
             )
             return
         else:
-            new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - damage
-            sheet.update_cell(target_idx, 11, new_target_exp)
+            # ✅ 반격 체크 먼저
+            counter_msg = check_counter(user_id, username, target_id, f"<@{target_id}>", damage)
 
-            self.log_skill_use(
-                user_id,
-                username,
-                "폭탄",
-                f"대상: {target_name}, -{damage} exp"
-            )
+            if counter_msg:
+                # 반격 발동 → 시전자 피해
+                new_user_exp = safe_int(user_data.get("현재레벨경험치", 0)) - damage
+                sheet.update_cell(user_idx, 11, new_user_exp)
 
-            if dmg_type == "normal":
-                effect = "🎯"
-            elif dmg_type == "medium":
-                effect = "💥"
-            elif dmg_type == "LEGEND":
-                effect = "⚡레전드상황발생⚡"
+                self.log_skill_use(
+                    user_id,
+                    username,
+                    "폭탄",
+                    f"반격 발동! 자신이 -{damage} exp"
+                )
+
+                result_msg = (
+                    prefix_msg +
+                    f"🎯 랜덤 타겟: <@{target_id}> → 0 피해 (반격 발동!)\n" +
+                    counter_msg +
+                    f"\n💥 {username} 님이 반격으로 {damage} 피해를 입었습니다! (현재 경험치: {new_user_exp})"
+                )
             else:
-                effect = "🔥 치명적!"
+                # 반격 없음 → 정상 피해
+                new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - damage
+                sheet.update_cell(target_idx, 11, new_target_exp)
 
-            await interaction.followup.send(
-                prefix_msg +
-                f"{effect} 랜덤 타겟: <@{target_id}> → -{damage} exp (현재 경험치: {new_target_exp})"
-            )
+                self.log_skill_use(
+                    user_id,
+                    username,
+                    "폭탄",
+                    f"대상: {target_name}, -{damage} exp"
+                )
+
+                if dmg_type == "normal":
+                    effect = "🎯"
+                elif dmg_type == "medium":
+                    effect = "💥"
+                elif dmg_type == "LEGEND":
+                    effect = "⚡레전드상황발생⚡"
+                else:
+                    effect = "🔥 치명적!"
+
+                result_msg = (
+                    prefix_msg +
+                    f"{effect} 랜덤 타겟: <@{target_id}> → -{damage} exp (현재 경험치: {new_target_exp})"
+                )
+
+            await interaction.followup.send(result_msg)
 
 
 async def setup(bot):
