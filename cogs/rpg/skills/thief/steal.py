@@ -128,9 +128,6 @@ class Steal(commands.Cog):
         # ✅ 반격 체크
         counter_msg = check_counter(user_id, interaction.user.name, target_id, target.mention, steal_amount)
         if counter_msg:
-            # 반격 발동 → 대상 exp 변화 없음, 시전자 exp 감소
-            new_user_exp = safe_int(user_data.get("현재레벨경험치", 0)) - steal_amount
-            sheet.update_cell(user_idx, 11, new_user_exp)
             self.log_skill_use(user_id, interaction.user.name, "스틸", f"반격 당함 -{steal_amount} exp")
             await interaction.followup.send(
                 f"🥷 {interaction.user.name}님이 {target.mention} 님을 스틸하려 했으나...\n"
