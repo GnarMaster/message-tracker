@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
 import random
-from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, add_counter_buff
+from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter, add_counter_buff
 
 class ThreeHits(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -87,7 +87,7 @@ class ThreeHits(commands.Cog):
             return
         else:
             if job == "검성":
-                prefix_msg = f"🗡️ 검성 {interaction.user.name} 님이 {target.mention} 님에게 **사연격**을 시전했다!\n"
+                prefix_msg = f"🗡️ 검성 {interaction.user.name} 님이 {target.mention} 님에게 **삼연격**을 시전했다!\n"
             elif job == "투신":
                 prefix_msg = f"🪓 투신 {interaction.user.name} 님이 {target.mention} 님에게 **삼연격**을 시전했다!\n"
             elif job == "검투사":
@@ -103,7 +103,7 @@ class ThreeHits(commands.Cog):
                 return 16 + (level * 2), "🔥 치명타!"
             else:
                 return 8 + level, "✅ 명중!"
-        
+
         if job == "검성":
             chances = [90, 60, 30, 15]
         else:
@@ -139,8 +139,16 @@ class ThreeHits(commands.Cog):
             if random.random() <= 0.25:
                 add_counter_buff(user_id, username)
 
+        # 결과 메시지 생성
+        result_msg = "\n".join(logs)
+        result_msg += f"\n👉 총합: {target.mention} 님에게 {total_damage} 피해!"
+
+        # ✅ 메인 타겟 반격 체크
+        counter_msg_main = check_counter(user_id, username, target_id, target.mention, total_damage)
+        if counter_msg_main:
+            result_msg += f"\n{counter_msg_main}"
+
         # 투신 전용 추가 일격
-        bonus_logs = []
         if job == "투신":
             candidates = [
                 (idx, row) for idx, row in enumerate(records, start=2)
@@ -157,16 +165,15 @@ class ThreeHits(commands.Cog):
                 sheet.update_cell(rand_idx, 11, rand_new_exp)
 
                 nickname = rand_data.get("닉네임", "???")
-                bonus_logs.append(f"⚡ 투신의 추가 일격! {nickname} → {rand_msg} ({bonus_dmg})")
+                result_msg += f"\n⚡ 투신의 추가 일격! {nickname} → {rand_msg} ({bonus_dmg})"
+
+                # ✅ 추가 일격 반격 체크
+                counter_msg_bonus = check_counter(user_id, username, str(rand_data.get("유저 ID")), nickname, bonus_dmg)
+                if counter_msg_bonus:
+                    result_msg += f"\n{counter_msg_bonus}"
 
         # 로그 기록
         self.log_skill_use(user_id, username, "삼연격", f"대상: {target.name}, 총 {total_damage} 피해")
-
-        # 결과 메시지
-        result_msg = "\n".join(logs)
-        if bonus_logs:
-            result_msg += "\n" + "\n".join(bonus_logs)
-        result_msg += f"\n👉 총합: {target.mention} 님에게 {total_damage} 피해!"
 
         await interaction.followup.send(prefix_msg + result_msg)
 
