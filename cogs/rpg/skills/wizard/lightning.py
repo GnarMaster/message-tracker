@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
 import random
-from utils import get_sheet, safe_int
+from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill
 
 class Mage(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -84,9 +84,23 @@ class Mage(commands.Cog):
             return
 
         # 직업 확인
-        if user_row[1].get("직업") != "마법사":
-            await interaction.followup.send("❌ 마법사만 사용할 수 있는 스킬입니다!")
-            return
+        job = user_row[1].get("직업", "백수")
+
+        # ✅ 카피닌자 처리
+        if job == "카피닌자":
+            copied_skill = get_copied_skill(user_id)
+            if copied_skill != "체라":
+                await interaction.followup.send("❌ 현재 복사한 스킬이 체라가 아닙니다.", ephemeral=True)
+                return
+            else:
+                clear_copied_skill(user_id)
+                prefix_msg = f"💀 카피닌자 {interaction.user.name}님이 복사한 스킬 **체인라이트닝**을 발동!\n"
+        else :
+            if job != "마법사":
+                await interaction.followup.send("❌ 마법사만 사용할 수 있는 스킬입니다!", ephemeral=True)
+                return
+            prefix_msg = f"🔮 {interaction.user.name}님의 **체인라이트닝** 발동!\n"
+
 
         level = safe_int(user_row[1].get("레벨", 1))
 
@@ -164,7 +178,7 @@ class Mage(commands.Cog):
 
         # 출력 메시지
         await interaction.followup.send(
-            f"🔮 {interaction.user.name}님의 **체인라이트닝** 발동!\n" +
+            prefix_msg +
             "\n".join(damage_logs)
         )
 
