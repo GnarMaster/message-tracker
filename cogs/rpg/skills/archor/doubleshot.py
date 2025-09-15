@@ -89,6 +89,7 @@ class Archer(commands.Cog):
             prefix_msg = f"🏹 {interaction.user.name} 님의 **더블샷** 발동!\n"
 
         level = safe_int(user_row[1].get("레벨", 1))
+        user_idx, user_data = user_row
 
         def calc_damage():
             base = 4 + level
@@ -109,31 +110,37 @@ class Archer(commands.Cog):
         # 첫 번째 타겟
         dmg1, msg1 = calc_damage()
         idx1, data1 = row1
-        new_exp1 = safe_int(data1.get("현재레벨경험치", 0)) - dmg1
-        sheet.update_cell(idx1, 11, new_exp1)
+        counter_msg1, reflected1 = check_counter(user_id, username, str(target1.id), target1.mention, dmg1)
 
-        counter_msg1 = check_counter(user_id, username, str(target1.id), target1.mention, dmg1)
-
-        result_msg += f"🎯 첫 번째 타겟: {target1.mention} → {msg1} ({dmg1})"
-        if counter_msg1:
-            result_msg += f"\n{counter_msg1}"
-        result_msg += "\n"
+        if reflected1:
+            # 반격이면 공격자 경험치 차감
+            new_user_exp = safe_int(user_data.get("현재레벨경험치", 0)) - dmg1
+            sheet.update_cell(user_idx, 11, new_user_exp)
+            result_msg += f"🎯 첫 번째 타겟: {target1.mention} → 공격 무효!\n{counter_msg1}\n"
+        else:
+            new_exp1 = safe_int(data1.get("현재레벨경험치", 0)) - dmg1
+            sheet.update_cell(idx1, 11, new_exp1)
+            result_msg += f"🎯 첫 번째 타겟: {target1.mention} → {msg1} ({dmg1})\n"
 
         # 두 번째 타겟
         dmg2, msg2 = calc_damage()
         idx2, data2 = row2
-        if idx1 == idx2:
-            new_exp2 = new_exp1 - dmg2
-            sheet.update_cell(idx2, 11, new_exp2)
+        counter_msg2, reflected2 = check_counter(user_id, username, str(target2.id), target2.mention, dmg2)
+
+        if reflected2:
+            # 반격이면 공격자 경험치 차감
+            new_user_exp = safe_int(user_data.get("현재레벨경험치", 0)) - dmg2
+            sheet.update_cell(user_idx, 11, new_user_exp)
+            result_msg += f"🎯 두 번째 타겟: {target2.mention} → 공격 무효!\n{counter_msg2}\n"
         else:
-            new_exp2 = safe_int(data2.get("현재레벨경험치", 0)) - dmg2
-            sheet.update_cell(idx2, 11, new_exp2)
-
-        counter_msg2 = check_counter(user_id, username, str(target2.id), target2.mention, dmg2)
-
-        result_msg += f"🎯 두 번째 타겟: {target2.mention} → {msg2} ({dmg2})"
-        if counter_msg2:
-            result_msg += f"\n{counter_msg2}"
+            if idx1 == idx2:
+                # 같은 대상이면 누적 적용
+                new_exp2 = safe_int(data1.get("현재레벨경험치", 0)) - dmg1 - dmg2
+                sheet.update_cell(idx2, 11, new_exp2)
+            else:
+                new_exp2 = safe_int(data2.get("현재레벨경험치", 0)) - dmg2
+                sheet.update_cell(idx2, 11, new_exp2)
+            result_msg += f"🎯 두 번째 타겟: {target2.mention} → {msg2} ({dmg2})\n"
 
         # 로그 저장
         self.log_skill_use(user_id, username, "더블샷", f"{target1.name} -{dmg1}, {target2.name} -{dmg2}")
