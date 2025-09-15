@@ -182,5 +182,6 @@ class Mage(commands.Cog):
             "\n".join(damage_logs)
         )
 
+
 async def setup(bot):
     await bot.add_cog(Mage(bot))
