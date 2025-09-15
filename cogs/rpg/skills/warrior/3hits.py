@@ -52,7 +52,8 @@ class ThreeHits(commands.Cog):
             remain = (last_used + timedelta(hours=4)) - datetime.now()
             minutes = remain.seconds // 60
             await interaction.followup.send(
-                f"⏳ 아직 쿨타임입니다! {minutes}분 뒤에 다시 시도하세요.", ephemeral=True
+                f"⏳ 아직 쿨타임입니다! {minutes}분 뒤에 다시 시도하세요."
+                
             )
             return
 
@@ -78,7 +79,7 @@ class ThreeHits(commands.Cog):
         if job == "카피닌자":
             copied_skill = get_copied_skill(user_id)
             if copied_skill != "삼연격":
-                await interaction.followup.send("❌ 현재 복사한 스킬이 삼연격이 아닙니다.", ephemeral=True)
+                await interaction.followup.send("❌ 현재 복사한 스킬이 삼연격이 아닙니다.")
                 return
             clear_copied_skill(user_id)
             prefix_msg = f"💀 카피닌자 {interaction.user.name}님이 복사한 스킬 **삼연격**을 발동!\n"
