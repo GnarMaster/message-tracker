@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
 import random
-from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill
+from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter
 
 class Archer(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -104,11 +104,20 @@ class Archer(commands.Cog):
             else:
                 return 0, "❌ 빗나감..."
 
+        result_msg = prefix_msg
+
         # 첫 번째 타겟
         dmg1, msg1 = calc_damage()
         idx1, data1 = row1
         new_exp1 = safe_int(data1.get("현재레벨경험치", 0)) - dmg1
         sheet.update_cell(idx1, 11, new_exp1)
+
+        counter_msg1 = check_counter(user_id, username, str(target1.id), target1.mention, dmg1)
+
+        result_msg += f"🎯 첫 번째 타겟: {target1.mention} → {msg1} ({dmg1})"
+        if counter_msg1:
+            result_msg += f"\n{counter_msg1}"
+        result_msg += "\n"
 
         # 두 번째 타겟
         dmg2, msg2 = calc_damage()
@@ -120,13 +129,16 @@ class Archer(commands.Cog):
             new_exp2 = safe_int(data2.get("현재레벨경험치", 0)) - dmg2
             sheet.update_cell(idx2, 11, new_exp2)
 
+        counter_msg2 = check_counter(user_id, username, str(target2.id), target2.mention, dmg2)
+
+        result_msg += f"🎯 두 번째 타겟: {target2.mention} → {msg2} ({dmg2})"
+        if counter_msg2:
+            result_msg += f"\n{counter_msg2}"
+
+        # 로그 저장
         self.log_skill_use(user_id, username, "더블샷", f"{target1.name} -{dmg1}, {target2.name} -{dmg2}")
 
-        await interaction.followup.send(
-            prefix_msg +
-            f"🎯 첫 번째 타겟: {target1.mention} → {msg1} ({dmg1})\n"
-            f"🎯 두 번째 타겟: {target2.mention} → {msg2} ({dmg2})"
-        )
+        await interaction.followup.send(result_msg)
 
 async def setup(bot):
     await bot.add_cog(Archer(bot))
