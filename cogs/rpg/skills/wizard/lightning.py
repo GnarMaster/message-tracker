@@ -101,7 +101,6 @@ class Mage(commands.Cog):
                 return
             prefix_msg = f"🔮 {interaction.user.name}님의 **체인라이트닝** 발동!\n"
 
-
         level = safe_int(user_row[1].get("레벨", 1))
 
         # 기본뎀 계산
