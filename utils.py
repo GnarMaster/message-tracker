@@ -64,7 +64,6 @@ def get_copied_skill(user_id: str) -> str | None:
             return row.get("복사한 스킬명")
     return None
 
-
 # ✅ 카피닌자 복사 스킬 초기화 (사용 후 삭제)
 def clear_copied_skill(user_id: str):
     sheet = get_sheet().spreadsheet
