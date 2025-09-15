@@ -105,15 +105,16 @@ class Steal(commands.Cog):
 
         user_idx, user_data = user_row
         target_idx, target_data = target_row
+        job = user_data.get("직업", "백수")
+        level = safe_int(user_data.get("레벨", 1))
 
-        if user_data.get("직업") != "도적":
-            await interaction.followup.send("❌ 도적만 사용할 수 있는 스킬입니다!", ephemeral=True)
+        if job not in ["도적", "암살자", "카피닌자", "의적"]:
+            await interaction.followup.send("❌ 도적 계열만 사용할 수 있는 스킬입니다!", ephemeral=True)
             return
 
        
 
         # ✅ 훔칠 양 계산
-        current_level = safe_int(user_data.get("레벨", 1))
         base = self.get_steal_base()
 
         if base <= 0:
@@ -123,27 +124,128 @@ class Steal(commands.Cog):
                 f"🥷 {interaction.user.name} 님이 {target.mention} 님을 스틸하려 했지만 실패했습니다…", ephemeral=False
             )
             return
+        steal_amount = base + level
 
-        # ✅ 경험치 갱신
-        new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - (base + current_level) 
-        new_user_exp   = safe_int(user_data.get("현재레벨경험치", 0)) + (base + current_level)  
+        #-------- 직업별 분기 ---------------
+        if job == "도적":
+            # ✅ 경험치 갱신
+            new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - steal_amount
+            new_user_exp   = safe_int(user_data.get("현재레벨경험치", 0)) + steal_amount 
+            sheet.update_cell(target_idx, 11, new_target_exp)
+            sheet.update_cell(user_idx, 11, new_user_exp)
 
-        sheet.update_cell(target_idx, 11, new_target_exp)
-        sheet.update_cell(user_idx, 11, new_user_exp)
+            # ✅ 로그 기록
+            self.log_skill_use(
+                user_id,
+                interaction.user.name,
+                "스틸",
+                f"대상: {target.name}, {steal_amount} 잃음 / 자신: {steal_amount} 획득"
+            )
+            # ✅ 성공 메시지
+            await interaction.followup.send(
+                f"🥷 {interaction.user.name}님이 {target.mention} 님의 {steal_amount} exp를 스틸하였습니다!\n"
+                f"💀 {target.name} -{steal_amount} exp")
+            return
+            
+        elif job == "카피닌자":
+            copied_amount = int(steal_amount * 0.7) #70%만 훔침
+            log_sheet = self.get_skill_log_sheet()
+            logs = log_sheet.get_all_records()
+            recent_skill = "알 수 없음"
+            for row in reversed(logs):
+                if str(row.get("유저 ID", "")) == target_id:
+                    recent_skill = row.get("스킬명", "알 수 없음")
+                    break
+                    
+            new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - copied_amount
+            new_user_exp   = safe_int(user_data.get("현재레벨경험치", 0)) + copied_amount
+            sheet.update_cell(target_idx, 11, new_target_exp)
+            sheet.update_cell(user_idx, 11, new_user_exp)
 
-        # ✅ 로그 기록
-        self.log_skill_use(
-            user_id,
-            interaction.user.name,
-            "스틸",
-            f"대상: {target.name}, {base+current_level} 잃음 / 자신: {base}+{current_level} = {base+current_level} 획득"
-        )
+            self.log_skill_use(
+                user_id,
+                interaction.user.name,
+                "스틸",
+                f"대상: {target.name}, {steal_amount} 잃음 / 자신: {steal_amount} 획득"
+            )
+            from utils import save_copied_skill
+            save_copied_skill(user_id, recent_skill)
+            # ✅ 성공 메시지
+            await interaction.followup.send(
+                f"🥷 {interaction.user.name}님이 {target.mention} 님의 {copied_amount} exp를 스틸하였습니다!\n"
+                f"💀 카피닌자! {interaction.user.name}님이 스킬 **{recent_skill}**을 복사했습니다!"
+            )
 
-        # ✅ 성공 메시지
-        await interaction.followup.send(
-            f"🥷 {interaction.user.name}님이 {target.mention} 님의 경험치를 스틸하였습니다!\n"
-            f"💀 {target.name} -{base+current_level} exp (현재 경험치: {new_target_exp})", ephemeral=False
-        )
+        elif  job == "의적":
+            total = steal_amount
+            self_gain = total // 2
+            share_pool = total - self_gain
 
+            # 분배 대상 (레벨 5 이상, 자기/타겟 제외)
+            candidates = [
+                (idx, row) for idx, row in enumerate(records, start=2)
+                if safe_int(row.get("레벨", 1)) >= 5
+                and str(row.get("유저 ID", "")) not in (user_id, target_id)
+            ]
+            chosen = random.sample(candidates, k=min(len(candidates), random.randint(1, 4))) if candidates else []
+
+            # 경험치 갱신
+            new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - total
+            new_user_exp   = safe_int(user_data.get("현재레벨경험치", 0)) + self_gain
+            sheet.update_cell(target_idx, 11, new_target_exp)
+            sheet.update_cell(user_idx, 11, new_user_exp)
+
+            self.log_skill_use(
+                user_id,
+                interaction.user.name,
+                "스틸",
+                f"대상: {target.name}, {steal_amount} 잃음 / 자신: {steal_amount} 획득"
+            )
+            
+            # ✅ 메시지 출력 포맷
+            msg = (
+                f"🥷 {interaction.user.name}님이 {target.mention} 님의 {total} exp를 스틸하였습니다!\n"
+                f"➡️ 본인: +{self_gain} exp"
+            )
+
+            if chosen:
+                share_each = share_pool // len(chosen)
+                msg += "\n📦 의적이 경험치를 나눕니다! 분배대상:"
+                for rand_idx, rand_data in chosen:
+                    rand_new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) + share_each
+                    sheet.update_cell(rand_idx, 11, rand_new_exp)
+                    nickname = rand_data.get("닉네임", "???")
+                    msg += f"\n   • {nickname}: +{share_each} exp"
+            else:
+                msg += f"\n(분배 대상 없음, {share_pool} exp 소멸)"
+        
+            await interaction.followup.send(msg)
+            
+        elif job == "암살자":
+            total = steal_amount
+            logs = []
+            
+            logs.append(f"🗡️ 암살자 스틸 성공! {target.mention} → -{steal_amount} exp")
+             # 30% 확률로 2회차 추가
+            if random.random() <= 0.3:
+                total += steal_amount
+                logs.append(f"⚡ 연속 스틸! 추가로 -{steal_amount} exp")
+               
+            
+            new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - total
+            new_user_exp   = safe_int(user_data.get("현재레벨경험치", 0)) + total
+            sheet.update_cell(target_idx, 11, new_target_exp)
+            sheet.update_cell(user_idx, 11, new_user_exp)
+
+            self.log_skill_use(
+                user_id,
+                interaction.user.name,
+                "스틸",
+                f"대상: {target.name}, {total} 잃음 / 자신: {total} 획득"
+            )
+            
+            msg = "\n".join(logs)
+            await interaction.followup.send(msg)
+        
 async def setup(bot):
     await bot.add_cog(Steal(bot))
