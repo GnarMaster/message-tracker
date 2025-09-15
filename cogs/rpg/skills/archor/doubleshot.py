@@ -114,8 +114,6 @@ class Archer(commands.Cog):
 
         if reflected1:
             # 반격이면 공격자 경험치 차감
-            new_user_exp = safe_int(user_data.get("현재레벨경험치", 0)) - dmg1
-            sheet.update_cell(user_idx, 11, new_user_exp)
             result_msg += f"🎯 첫 번째 타겟: {target1.mention} → 공격 무효!\n{counter_msg1}\n"
         else:
             new_exp1 = safe_int(data1.get("현재레벨경험치", 0)) - dmg1
@@ -128,9 +126,6 @@ class Archer(commands.Cog):
         counter_msg2, reflected2 = check_counter(user_id, username, str(target2.id), target2.mention, dmg2)
 
         if reflected2:
-            # 반격이면 공격자 경험치 차감
-            new_user_exp = safe_int(user_data.get("현재레벨경험치", 0)) - dmg2
-            sheet.update_cell(user_idx, 11, new_user_exp)
             result_msg += f"🎯 두 번째 타겟: {target2.mention} → 공격 무효!\n{counter_msg2}\n"
         else:
             if idx1 == idx2:
