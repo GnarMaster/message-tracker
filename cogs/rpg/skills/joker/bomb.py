@@ -83,7 +83,7 @@ class Bomb(commands.Cog):
             if str(row.get("유저 ID", "")) == user_id:
                 user_row = (idx, row)
             else:
-                if safe_int(row.get("레벨", 1)) >= 2:
+                if safe_int(row.get("레벨", 1)) >= 5:
                     candidates.append((idx, row))
 
         if not user_row:
@@ -133,10 +133,6 @@ class Bomb(commands.Cog):
             counter_msg = check_counter(user_id, username, target_id, f"<@{target_id}>", damage)
 
             if counter_msg:
-                # 반격 발동 → 시전자 피해
-                new_user_exp = safe_int(user_data.get("현재레벨경험치", 0)) - damage
-                sheet.update_cell(user_idx, 11, new_user_exp)
-
                 self.log_skill_use(
                     user_id,
                     username,
