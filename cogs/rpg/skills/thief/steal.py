@@ -231,7 +231,6 @@ class Steal(commands.Cog):
                 total += steal_amount
                 logs.append(f"⚡ 연속 스틸! 추가로 -{steal_amount} exp")
                
-            
             new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - total
             new_user_exp   = safe_int(user_data.get("현재레벨경험치", 0)) + total
             sheet.update_cell(target_idx, 11, new_target_exp)
