@@ -90,7 +90,7 @@ class Mage(commands.Cog):
         if job == "카피닌자":
             copied_skill = get_copied_skill(user_id)
             if copied_skill != "체라":
-                await interaction.followup.send("❌ 현재 복사한 스킬이 체라가 아닙니다.", ephemeral=True)
+                await interaction.followup.send("❌ 현재 복사한 스킬이 아닙니다.", ephemeral=True)
                 return
             else:
                 clear_copied_skill(user_id)
