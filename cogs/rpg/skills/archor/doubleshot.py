@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
 import random
-from utils import get_sheet, safe_int
+from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill
 
 class Archer(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -44,10 +44,9 @@ class Archer(commands.Cog):
         user_id = str(interaction.user.id)
         username = interaction.user.name
 
-         # ⚡ 즉시 응답 → 유저에게 "처리중..." 표시 (ephemeral=True)
         await interaction.response.send_message("🏹 더블샷 준비 중...", ephemeral=True)
 
-        # 쿨타임 확인 (4시간)
+        # 쿨타임 확인
         last_used = self.get_last_skill_time(user_id, "더블샷")
         if last_used and datetime.now() < last_used + timedelta(hours=4):
             remain = (last_used + timedelta(hours=4)) - datetime.now()
@@ -58,7 +57,6 @@ class Archer(commands.Cog):
         sheet = get_sheet()
         records = sheet.get_all_records()
 
-        
         user_row, row1, row2 = None, None, None
         for idx, row in enumerate(records, start=2):
             if str(row.get("유저 ID", "")) == user_id:
@@ -67,7 +65,7 @@ class Archer(commands.Cog):
                 row1 = (idx, row)
             if str(row.get("유저 ID", "")) == str(target2.id):
                 row2 = (idx, row)
-                
+
         if not user_row:
             await interaction.followup.send("⚠️ 당신의 데이터가 없습니다.", ephemeral=True)
             return
@@ -75,26 +73,35 @@ class Archer(commands.Cog):
             await interaction.followup.send("⚠️ 대상 유저의 데이터가 없습니다.", ephemeral=True)
             return
 
-        # 직업 확인 (궁수)
-        if user_row[1].get("직업") != "궁수":
-            await interaction.followup.send("❌ 궁수만 사용할 수 있는 스킬입니다!", ephemeral=True)
-            return
+        # 직업 확인
+        job = user_row[1].get("직업", "백수")
+        if job == "카피닌자":
+            copied_skill = get_copied_skill(user_id)
+            if copied_skill != "더블샷":
+                await interaction.followup.send("❌ 현재 복사한 스킬이 더블샷이 아닙니다.", ephemeral=True)
+                return
+            clear_copied_skill(user_id)
+            prefix_msg = f"💀 카피닌자 {interaction.user.name}님이 복사한 스킬 **더블샷**을 발동!\n"
+        else:
+            if job != "궁수":
+                await interaction.followup.send("❌ 궁수만 사용할 수 있는 스킬입니다!", ephemeral=True)
+                return
+            prefix_msg = f"🏹 {interaction.user.name} 님의 **더블샷** 발동!\n"
 
         level = safe_int(user_row[1].get("레벨", 1))
-    
-        # 데미지 계산 함수
+
         def calc_damage():
             base = 4 + level
             crit_chance = 20
-            miss_chance = max(0, 10 - (level // 5))   # 빗나감 확률 = 10 - 레벨/5 %
+            miss_chance = max(0, 10 - (level // 5))
             hit_chance = 100 - crit_chance - miss_chance
-            
+
             roll = random.randint(1, 100)
-            if roll <= crit_chance:  # 치명타
+            if roll <= crit_chance:
                 return base * 2, "🔥 치명타!!!"
-            elif roll <= crit_chance + hit_chance:  # 명중
+            elif roll <= crit_chance + hit_chance:
                 return base, "✅ 명중!"
-            else:  # 빗나감
+            else:
                 return 0, "❌ 빗나감..."
 
         # 첫 번째 타겟
@@ -106,27 +113,20 @@ class Archer(commands.Cog):
         # 두 번째 타겟
         dmg2, msg2 = calc_damage()
         idx2, data2 = row2
-
         if idx1 == idx2:
             new_exp2 = new_exp1 - dmg2
             sheet.update_cell(idx2, 11, new_exp2)
-        else :
+        else:
             new_exp2 = safe_int(data2.get("현재레벨경험치", 0)) - dmg2
             sheet.update_cell(idx2, 11, new_exp2)
 
-        # 로그 기록
-        self.log_skill_use(
-            user_id, username, "더블샷",
-            f"{target1.name} -{dmg1}, {target2.name} -{dmg2}"
-        )
+        self.log_skill_use(user_id, username, "더블샷", f"{target1.name} -{dmg1}, {target2.name} -{dmg2}")
 
-        # 출력 메시지
         await interaction.followup.send(
-            f"🏹 {interaction.user.name} 님의 **더블샷** 발동!\n"
+            prefix_msg +
             f"🎯 첫 번째 타겟: {target1.mention} → {msg1} ({dmg1})\n"
-            f"🎯 두 번째 타겟: {target2.mention} → {msg2} ({dmg2})\n"
+            f"🎯 두 번째 타겟: {target2.mention} → {msg2} ({dmg2})"
         )
 
 async def setup(bot):
     await bot.add_cog(Archer(bot))
-
