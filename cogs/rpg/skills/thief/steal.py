@@ -166,15 +166,23 @@ class Steal(commands.Cog):
                 user_id,
                 interaction.user.name,
                 "스틸",
-                f"대상: {target.name}, {steal_amount} 잃음 / 자신: {steal_amount} 획득"
+                f"대상: {target.name}, {copied_amount} 잃음 / 자신: {copied_amount} 획득"
             )
-            from utils import save_copied_skill
-            save_copied_skill(user_id, recent_skill)
-            # ✅ 성공 메시지
-            await interaction.followup.send(
-                f"🥷 {interaction.user.name}님이 {target.mention} 님의 {copied_amount} exp를 스틸하였습니다!\n"
-                f"💀 카피닌자! {interaction.user.name}님이 스킬 **{recent_skill}**을 복사했습니다!"
-            )
+
+            target_job = target_data.get("직업", "백수")
+            if target_job in ["도적", "암살자", "의적", "카피닌자"]:
+                await interaction.followup.send(
+                    f"🥷 {interaction.user.name}님이 {target.mention} 님의 {copied_amount} exp를 스틸하였습니다!\n"
+                    f"⚠️ 카피닌자도 도적 스킬은 훔치지 못한다...."
+                )
+            else:
+                from utils import save_copied_skill
+                save_copied_skill(user_id, recent_skill)
+                # ✅ 성공 메시지
+                await interaction.followup.send(
+                    f"🥷 {interaction.user.name}님이 {target.mention} 님의 {copied_amount} exp를 스틸하였습니다!\n"
+                    f"💀 카피닌자! {interaction.user.name}님이 스킬 **{recent_skill}**을 복사했습니다!"
+                )
 
         elif  job == "의적":
             total = steal_amount
