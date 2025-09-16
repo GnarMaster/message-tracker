@@ -58,10 +58,12 @@ class JobSelectView(View):
         today_str = datetime.now(timezone("Asia/Seoul")).strftime("%Y-%m-%d")
         ws.append_row([today_str, user_id, username, old_job, chosen_job])
 
+        await interaction.message.edit(view=None)
+        
         # ✅ 본인에게만 확인 메시지
-        await interaction.response.edit_message(
+        await interaction.followup.send(
             content=f"✅ 전직이 완료되었습니다! {old_job} → {chosen_job} {get_job_icon(chosen_job)}",
-            view=None
+            ephemeral=True
         )
 
         # ✅ 전체 채널 공지
