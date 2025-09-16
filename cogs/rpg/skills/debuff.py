@@ -44,6 +44,18 @@ class Debuff(commands.Cog):
                 sheet.delete_rows(idx)
                 break
 
+    # ✅ 시전자 전용 알림 (ephemeral)
+    @staticmethod
+    async def notify_caster(interaction, target_name: str, effect: str):
+        try:
+            await interaction.followup.send(
+                f"🤫 {target_name} 님에게 **{effect}** 효과가 부여되었습니다.",
+                ephemeral=True
+            )
+        except:
+            pass
+
+    
     # ✅ 테스트용: 버프/디버프 걸기 (관리자만 가능)
     @app_commands.command(name="버프걸기", description="테스트용: 특정 유저에게 버프/디버프를 겁니다. (관리자 전용)")
     async def 버프걸기(self, interaction: discord.Interaction, target: discord.Member, effect: str):
