@@ -193,13 +193,17 @@ class Bomb(commands.Cog):
                         else:
                             result_msg += f"\n🎉 {nickname} → +{delta} exp (행운의 선물!)"
                 elif job == "미치광이":
-                    if random.random() <= 1:  # 15% 확률로 광란 부여
-                        
-                        Debuff.add_effect(str(target_id), target_name, "광란", user_id, username)
-                        # ✅ 시전자에게만 비밀 알림
-                        await Debuff.notify_caster(interaction, target_name, "광란")
-
-            await interaction.followup.send(result_msg)
+                    if random.random() <= 0.15:  # 15% 확률로 광란 부여 
+                        debuff_cog = interaction.client.get_cog("Debuff")
+                        if debuff_cog:
+                            debuff_cog.add_effect(
+                                str(target.id), target.name,
+                                "광란", str(interaction.user.id), interaction.user.name
+                            )
+                            await debuff_cog.notify_caster(interaction, target.name, "광란")
+                            
+        # ✅ 결과 메시지는 항상 출력
+        await interaction.followup.send(result_msg)
 
 
 async def setup(bot):
