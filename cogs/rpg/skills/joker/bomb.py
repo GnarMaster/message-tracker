@@ -6,7 +6,6 @@ import random
 
 from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter
 from debuff import Debuff
-from debuff_util import notify_caster_about_effect
 
 class Bomb(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -198,7 +197,7 @@ class Bomb(commands.Cog):
                         
                         Debuff.add_effect(str(target_id), target_name, "광란", user_id, username)
                         # ✅ 시전자에게만 비밀 알림
-                        await notify_caster_about_effect(interaction, target_name, "광란")
+                        await Debuff.notify_caster(interaction, target_name, "광란")
 
             await interaction.followup.send(result_msg)
 
