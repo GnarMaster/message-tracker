@@ -105,7 +105,7 @@ class Bomb(commands.Cog):
             clear_copied_skill(user_id)
             prefix_msg = f"💀 카피닌자 {interaction.user.name}님이 복사한 스킬 **폭탄**을 발동!\n"
         else:
-            if job != "특수":
+            if job not in ["특수","파괴광","축제광"]:
                 await interaction.followup.send("❌ 특수 직업만 사용할 수 있는 스킬입니다!")
                 return
             prefix_msg = f"💣 {username} 님이 폭탄을 던졌습니다!\n"
@@ -171,6 +171,28 @@ class Bomb(commands.Cog):
                     prefix_msg +
                     f"{effect} 랜덤 타겟: <@{target_id}> → -{damage} exp (현재 경험치: {new_target_exp})"
                 )
+                
+                # =============================
+                # 🔹 2차 전직 추가 효과
+                # =============================
+                if job == "파괴광":
+                    boosted = int(damage * 0.5)  # 추가 50% 피해
+                    new_target_exp -= boosted
+                    sheet.update_cell(target_idx, 11, new_target_exp)
+                    result_msg += f"\n💥 파괴광의 힘! 추가 피해 {boosted} 적용!"
+
+                elif job == "축제광":
+                    extra_targets = random.sample(candidates, k=min(len(candidates), random.randint(1, 5)))
+                    for rand_idx, rand_data in extra_targets:
+                        delta = random.randint(-20, 20)
+                        rand_new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) + delta
+                        sheet.update_cell(rand_idx, 11, rand_new_exp)
+                        nickname = rand_data.get("닉네임", "???")
+                        if delta < 0:
+                            result_msg += f"\n🎉 {nickname} → -{abs(delta)} exp (폭죽 맞음!)"
+                        else:
+                            result_msg += f"\n🎉 {nickname} → +{delta} exp (행운의 선물!)"
+                
 
             await interaction.followup.send(result_msg)
 
