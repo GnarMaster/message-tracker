@@ -5,7 +5,8 @@ from datetime import datetime, timedelta
 import random
 
 from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter
-
+from debuff import Debuff
+from debuff_util import notify_caster_about_effect
 
 class Bomb(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -105,7 +106,7 @@ class Bomb(commands.Cog):
             clear_copied_skill(user_id)
             prefix_msg = f"💀 카피닌자 {interaction.user.name}님이 복사한 스킬 **폭탄**을 발동!\n"
         else:
-            if job not in ["특수","파괴광","축제광"]:
+            if job not in ["특수","파괴광","축제광","미치광이"]:
                 await interaction.followup.send("❌ 특수 직업만 사용할 수 있는 스킬입니다!")
                 return
             prefix_msg = f"💣 {username} 님이 폭탄을 던졌습니다!\n"
@@ -192,7 +193,12 @@ class Bomb(commands.Cog):
                             result_msg += f"\n🎉 {nickname} → -{abs(delta)} exp (폭죽 맞음!)"
                         else:
                             result_msg += f"\n🎉 {nickname} → +{delta} exp (행운의 선물!)"
-                
+                elif job == "미치광이":
+                    if random.random() <= 1:  # 15% 확률로 광란 부여
+                        
+                        Debuff.add_effect(str(target_id), target_name, "광란", user_id, username)
+                        # ✅ 시전자에게만 비밀 알림
+                        await notify_caster_about_effect(interaction, target_name, "광란")
 
             await interaction.followup.send(result_msg)
 
