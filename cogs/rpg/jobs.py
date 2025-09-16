@@ -3,7 +3,19 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ui import View
 
+from datetime import datetime, timedelta
+from pytz import timezone
+
 from utils import get_sheet, safe_int, get_job_icon
+
+def get_job_log_sheet():
+    sheet = get_sheet().spreadsheet
+    try:
+        return sheet.worksheet("직변로그")
+    except:
+        ws = sheet.add_worksheet(title="직변로그", rows=1000, cols=5)
+        ws.append_row(["직변 일시", "유저 ID", "닉네임", "기존 직업", "변경 직업"])
+        return ws
 
 class JobSelectView(View):
     def __init__(self, row_idx: int, bot: commands.Bot, channel_id: int):
@@ -29,11 +41,26 @@ class JobSelectView(View):
 
         # ✅ 시트 업데이트
         sheet = get_sheet()
-        sheet.update_cell(self.row_idx, 12, chosen_job)
+        records = sheet.get_all_records()
+        user_id = str(interaction.user.id)
+        username = interaction.user.name
 
-        # ✅ 본인에게는 ephemeral 메시지 수정
+        # ✅ 기존 직업 확인 및 업데이트
+        old_job = None
+        for idx, row in enumerate(records, start=2):
+            if str(row.get("유저 ID", "")) == user_id:
+                old_job = row.get("직업", "백수")
+                sheet.update_cell(idx, 12, chosen_job)  # 직업 갱신
+                break
+
+        # ✅ 직변로그 기록
+        ws = get_job_log_sheet()
+        today_str = datetime.now(timezone("Asia/Seoul")).strftime("%Y-%m-%d")
+        ws.append_row([today_str, user_id, username, old_job, chosen_job])
+
+        # ✅ 본인에게만 확인 메시지
         await interaction.response.edit_message(
-            content=f"✅ 전직이 완료되었습니다! ({chosen_job} {get_job_icon(chosen_job)})",
+            content=f"✅ 전직이 완료되었습니다! {old_job} → {chosen_job} {get_job_icon(chosen_job)}",
             view=None
         )
 
@@ -42,15 +69,14 @@ class JobSelectView(View):
         if channel:
             await channel.send(
                 f"🎉 {interaction.user.mention} 님이 "
-                f"{get_job_icon(chosen_job)} **{chosen_job}** 으로 전직하였습니다!"
+                f"{get_job_icon(chosen_job)} **{old_job} → {chosen_job}** 으로 전직했습니다!"
             )
-
 
 class JobCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @app_commands.command(name="전직", description="레벨 5 이상 백수만 전직할 수 있습니다.")
+    @app_commands.command(name="전직", description="레벨 5 이상만 전직할 수 있습니다. 2주에 한번 변경 가능합니다")
     async def 전직(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
 
@@ -71,19 +97,32 @@ class JobCog(commands.Cog):
                         ephemeral=True
                     )
                     return
+                # 🔹 직변로그에서 최근 전직일 확인
+                ws = get_job_log_sheet()
+                log_records = ws.get_all_records()
+                last_change = None
+                for log in log_records:
+                    if str(log.get("유저 ID", "")) == user_id:
+                        try:
+                            d = datetime.strptime(log.get("직변 일시", ""), "%Y-%m-%d").date()
+                            if not last_change or d > last_change:
+                                last_change = d
+                        except:
+                            pass
 
-                # 🔴 이미 직업 있음
-                if current_job != "백수":
+                today = datetime.now(timezone("Asia/Seoul")).date()
+                if last_change and today < last_change + timedelta(days=14):
+                    remain = (last_change + timedelta(days=14)) - today
                     await interaction.followup.send(
-                        f"❌ {interaction.user.mention} 님은 이미 `{current_job}` 직업입니다. ",
+                        f"⏳ 최근 전직일: {last_change} → {remain.days}일 뒤 다시 가능합니다!",
                         ephemeral=True
                     )
                     return
-
+                    
                 # ✅ 조건 충족 → 전직 UI
                 view = JobSelectView(idx, self.bot, interaction.channel.id)
                 await interaction.followup.send(
-                    "⚔️ 전직할 직업을 선택하세요:",
+                    f"⚔️ 현재 직업: {current_job}\n새 직업을 선택하세요:",
                     view=view,
                     ephemeral=True
                 )
