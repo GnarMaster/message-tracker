@@ -2,8 +2,6 @@ import os
 import json
 import gspread
 from cogs.rpg.skills.debuff import Debuff
-from oauth2client.service_account import ServiceAccountCredentials
-
 
 def safe_int(val):
     try:
