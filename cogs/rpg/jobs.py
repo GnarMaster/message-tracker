@@ -59,7 +59,7 @@ class JobSelectView(View):
         ws.append_row([today_str, user_id, username, old_job, chosen_job])
 
         # ✅ 본인에게만 확인 메시지 (ephemeral)
-        await interaction.followup.send(
+        await interaction.response.send_message(
             f"✅ 전직 완료: {old_job} → {chosen_job} {get_job_icon(chosen_job)}",
             ephemeral=True
         )
