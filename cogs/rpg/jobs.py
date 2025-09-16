@@ -89,7 +89,7 @@ class JobCog(commands.Cog):
 
                 # 🔴 레벨 부족
                 if current_level < 5:
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         f"❌ {interaction.user.mention} 님은 아직 레벨이 부족합니다! "
                         "레벨 5 이상만 전직할 수 있어요.",
                         ephemeral=True
@@ -112,7 +112,7 @@ class JobCog(commands.Cog):
                 today = datetime.now(timezone("Asia/Seoul")).date()
                 if last_change and today < last_change + timedelta(days=14):
                     remain = (last_change + timedelta(days=14)) - today
-                    await interaction.response.send_message(
+                    await interaction.followup.send(
                         f"⏳ 최근 전직일: {last_change} → {remain.days}일 뒤 다시 가능합니다!",
                         ephemeral=True
                     )
@@ -128,7 +128,7 @@ class JobCog(commands.Cog):
                 return
 
         # 🔴 유저 데이터 없음
-        await interaction.response.send_message(
+        await interaction.followup.send(
             "⚠️ 유저 데이터를 찾을 수 없어요. 메시지를 좀 더 쳐야 기록이 생길 수 있어요!",
             ephemeral=True
         )
