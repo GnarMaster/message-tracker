@@ -58,11 +58,9 @@ class JobSelectView(View):
         today_str = datetime.now(timezone("Asia/Seoul")).strftime("%Y-%m-%d")
         ws.append_row([today_str, user_id, username, old_job, chosen_job])
 
-        await interaction.message.edit(view=None)
-        
-        # ✅ 본인에게만 확인 메시지
+        # ✅ 본인에게만 확인 메시지 (ephemeral)
         await interaction.followup.send(
-            content=f"✅ 전직이 완료되었습니다! {old_job} → {chosen_job} {get_job_icon(chosen_job)}",
+            f"✅ 전직 완료: {old_job} → {chosen_job} {get_job_icon(chosen_job)}",
             ephemeral=True
         )
 
@@ -80,8 +78,6 @@ class JobCog(commands.Cog):
 
     @app_commands.command(name="전직", description="레벨 5 이상만 전직할 수 있습니다. 2주에 한번 변경 가능합니다")
     async def 전직(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-
         sheet = get_sheet()
         records = sheet.get_all_records()
         user_id = str(interaction.user.id)
@@ -93,12 +89,13 @@ class JobCog(commands.Cog):
 
                 # 🔴 레벨 부족
                 if current_level < 5:
-                    await interaction.followup.send(
+                    await interaction.response.send_message(
                         f"❌ {interaction.user.mention} 님은 아직 레벨이 부족합니다! "
                         "레벨 5 이상만 전직할 수 있어요.",
                         ephemeral=True
                     )
                     return
+
                 # 🔹 직변로그에서 최근 전직일 확인
                 ws = get_job_log_sheet()
                 log_records = ws.get_all_records()
@@ -115,15 +112,15 @@ class JobCog(commands.Cog):
                 today = datetime.now(timezone("Asia/Seoul")).date()
                 if last_change and today < last_change + timedelta(days=14):
                     remain = (last_change + timedelta(days=14)) - today
-                    await interaction.followup.send(
+                    await interaction.response.send_message(
                         f"⏳ 최근 전직일: {last_change} → {remain.days}일 뒤 다시 가능합니다!",
                         ephemeral=True
                     )
                     return
-                    
+
                 # ✅ 조건 충족 → 전직 UI
                 view = JobSelectView(idx, self.bot, interaction.channel.id)
-                await interaction.followup.send(
+                await interaction.response.send_message(
                     f"⚔️ 현재 직업: {current_job}\n새 직업을 선택하세요:",
                     view=view,
                     ephemeral=True
@@ -131,9 +128,10 @@ class JobCog(commands.Cog):
                 return
 
         # 🔴 유저 데이터 없음
-        await interaction.followup.send(
+        await interaction.response.send_message(
             "⚠️ 유저 데이터를 찾을 수 없어요. 메시지를 좀 더 쳐야 기록이 생길 수 있어요!",
             ephemeral=True
         )
+
 async def setup(bot):
     await bot.add_cog(JobCog(bot))
