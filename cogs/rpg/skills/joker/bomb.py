@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 import random
 
 from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter
-from debuff import Debuff
 
 class Bomb(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -193,15 +192,7 @@ class Bomb(commands.Cog):
                         else:
                             result_msg += f"\n🎉 {nickname} → +{delta} exp (행운의 선물!)"
                 elif job == "미치광이":
-                    if random.random() <= 0.15:  # 15% 확률로 광란 부여 
-                        debuff_cog = interaction.client.get_cog("Debuff")
-                        if debuff_cog:
-                            debuff_cog.add_effect(
-                                str(target.id), target.name,
-                                "광란", str(interaction.user.id), interaction.user.name
-                            )
-                            await debuff_cog.notify_caster(interaction, target.name, "광란")
-                            
+                   pass
                 # ✅ 결과 메시지는 항상 출력
                 await interaction.followup.send(result_msg)
 
