@@ -1,7 +1,9 @@
 import os
 import json
 import gspread
+from debuff import Debuff
 from oauth2client.service_account import ServiceAccountCredentials
+
 
 def safe_int(val):
     try:
@@ -121,3 +123,35 @@ def check_counter(attacker_id: str, attacker_name: str, target_id: str, target_n
             # 공개 로그 메시지 반환
             return f"⚡ 앗! {target_name} 님은 반격 상태였다! → {attacker_name} 님이 {damage} 피해를 반사당했다!"
     return None
+
+
+# ============================
+#  미치광이 광란 버프 관련 함수
+# ============================
+
+def check_madness(user_id: str, target_id: str) -> str:
+    """
+    유저가 '광란' 상태면 타겟을 자기 자신으로 교체하고,
+    효과를 제거한다.
+    """
+    effects = Debuff.get_effects(user_id)
+    if "광란" in effects:
+        Debuff.remove_effect(user_id, "광란")
+        return user_id  # 자기 자신을 타격
+    return target_id
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
