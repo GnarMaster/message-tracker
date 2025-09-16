@@ -197,13 +197,19 @@ class Boss(commands.Cog):
         header_msg = ""
 
         # ⚔️ 전사 - 삼연격
-        if job == "전사":
+        if job in ["전사","검성","투신","검투사"]:
             header_msg = f"⚔️ {user.name} 님이 보스에게 **삼연격**을 시전했다!"
-            chances = [90, 45, 15]  # 1타, 2타, 3타 확률
+
+            #기본 확률
+            if job =="검성":
+                chances = [90,60,30,15]
+            else:
+                chances = [90, 45, 15]  # 1타, 2타, 3타 확률
+                
             for i, chance in enumerate(chances, start=1):
                 roll = random.randint(1, 100)
                 if roll <= chance:
-                    base = 10 + level
+                    base = 8 + level
                     dmg = base
                     crit_roll = random.randint(1, 100)
                     if crit_roll <= 10:  # 치명타 10%
@@ -214,7 +220,14 @@ class Boss(commands.Cog):
                     total_damage += dmg
                 else:
                     logs.append(f"{i}타: ❌ 실패")
-
+            if job == "투신":
+                bonus = int( (8+level) * 1.5)
+                logs.append(f"⚡ 투신 추가 일격! ({bonus})")
+                total_damage += bonus
+            if job == "검투사":
+                logs.append("🛡️ 검투사 보정: 총 피해 1.5배 적용!")
+                total_damage = int(total_damage * 1.5)
+                
         # 🔮 마법사 - 체인라이트닝 (모든 타격 보스 집중)
         elif job == "마법사":
             header_msg = f"🔮 {user.name} 님의 **체인라이트닝** 발동!"
@@ -243,9 +256,6 @@ class Boss(commands.Cog):
                 i += 1
                 multiplier /= 2
 
-        
-
-        
         # 🏹 궁수 - 더블샷 (보스에게 2발)
         elif job == "궁수":
             header_msg = f"🏹 {user.name} 님의 **더블샷** 발동!"
@@ -255,15 +265,19 @@ class Boss(commands.Cog):
                 if roll <= 20:
                     dmg = base * 2
                     logs.append(f"{i+1}타: 🎯 치명타! ({dmg})")
+                    total_damage += dmg
                 elif roll <= 90:
                     dmg = base
                     logs.append(f"{i+1}타: 🎯 명중 ({dmg})")
-                total_damage += dmg
+                    total_damage += dmg
+                else:
+                    logs.append(f"{i+1}타: ❌ 빗나감")
 
         # 🥷 도적 - 스틸
-        elif job == "도적":
+        elif job in  ["도적","암살자","의적","카피닌자"]:
             header_msg = f"🥷 {user.name} 님이 보스를 **스틸**하였다!"
             roll = random.uniform(0, 100)
+            
             if roll <= 80:  # 1~10
                 dmg = (random.randint(1, 10) + level)* 2
             elif roll <= 90:  # 실패
@@ -278,8 +292,21 @@ class Boss(commands.Cog):
                     dmg = 100 + level
                 else:
                     dmg = (50 + level)* 2
-            logs.append(f"스틸 피해: {dmg}")
-            total_damage += dmg
+
+            if job == "암살자" and dmg >0:
+                total_damage += dmg
+                logs.append(f"🗡️ 암살자 스틸 ({dmg})")
+                if random.random() <= 0.3:
+                    logs.append(f"⚡ 연속 스틸 발동! 추가 {dmg} 피해")
+                    total_damage += dmg
+            else:
+                total_damage += dmg  
+                logs.append(f"스틸 피해: {dmg}")
+
+            # 의적, 카피닌자 → 보스에선 특수효과 무의미 → 단순 1.5배
+            if job in ["의적", "카피닌자"]:
+                logs.append("📦 특수효과 무효 → 피해 1.5배 적용!")
+                total_damage = int(total_damage * 1.5)
 
         # 💣 특수 - 폭탄
         elif job == "특수":
