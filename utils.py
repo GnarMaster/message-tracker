@@ -1,7 +1,7 @@
 import os
 import json
 import gspread
-from debuff import Debuff
+from cogs.rpg.skills.debuff import Debuff
 from oauth2client.service_account import ServiceAccountCredentials
 
 
