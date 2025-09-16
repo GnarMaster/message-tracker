@@ -202,8 +202,8 @@ class Bomb(commands.Cog):
                             )
                             await debuff_cog.notify_caster(interaction, target.name, "광란")
                             
-        # ✅ 결과 메시지는 항상 출력
-        await interaction.followup.send(result_msg)
+                # ✅ 결과 메시지는 항상 출력
+                await interaction.followup.send(result_msg)
 
 
 async def setup(bot):
