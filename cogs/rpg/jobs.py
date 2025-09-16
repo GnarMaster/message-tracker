@@ -78,6 +78,9 @@ class JobCog(commands.Cog):
 
     @app_commands.command(name="전직", description="레벨 5 이상만 전직할 수 있습니다. 2주에 한번 변경 가능합니다")
     async def 전직(self, interaction: discord.Interaction):
+
+        await interaction.response.defer(ephemeral=True)
+        
         sheet = get_sheet()
         records = sheet.get_all_records()
         user_id = str(interaction.user.id)
@@ -120,7 +123,7 @@ class JobCog(commands.Cog):
 
                 # ✅ 조건 충족 → 전직 UI
                 view = JobSelectView(idx, self.bot, interaction.channel.id)
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"⚔️ 현재 직업: {current_job}\n새 직업을 선택하세요:",
                     view=view,
                     ephemeral=True
