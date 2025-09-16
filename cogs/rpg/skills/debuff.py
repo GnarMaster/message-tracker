@@ -45,8 +45,7 @@ class Debuff(commands.Cog):
                 break
 
     # ✅ 시전자 전용 알림 (ephemeral)
-    @staticmethod
-    async def notify_caster(interaction, target_name: str, effect: str):
+    async def notify_caster(self, interaction, target_name: str, effect: str):
         try:
             await interaction.followup.send(
                 f"🤫 {target_name} 님에게 **{effect}** 효과가 부여되었습니다.",
@@ -55,11 +54,23 @@ class Debuff(commands.Cog):
         except:
             pass
 
-    
+    # ============================
+    #  미치광이 광란 버프 관련 함수
+    # ============================
+    def check_madness(self, user_id: str) -> bool:
+        """
+        유저가 '광란' 상태면 효과를 제거하고 True 반환,
+        아니면 False 반환.
+        """
+        effects = self.get_effects(user_id)
+        if "광란" in effects:
+            self.remove_effect(user_id, "광란")
+            return True
+        return False
+
     # ✅ 테스트용: 버프/디버프 걸기 (관리자만 가능)
     @app_commands.command(name="버프걸기", description="테스트용: 특정 유저에게 버프/디버프를 겁니다. (관리자 전용)")
     async def 버프걸기(self, interaction: discord.Interaction, target: discord.Member, effect: str):
-        # 🔒 관리자 제한
         if interaction.user.id != ADMIN_ID:
             await interaction.response.send_message("❌ 이 명령어는 관리자만 사용할 수 있습니다!", ephemeral=True)
             return
