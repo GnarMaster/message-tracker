@@ -1,7 +1,6 @@
 import os
 import json
 import gspread
-from cogs.rpg.skills.debuff import Debuff
 
 def safe_int(val):
     try:
