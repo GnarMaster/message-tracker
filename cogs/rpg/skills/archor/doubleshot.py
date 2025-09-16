@@ -167,5 +167,6 @@ class Archer(commands.Cog):
 
         await interaction.followup.send(result_msg)
 
+
 async def setup(bot):
     await bot.add_cog(Archer(bot))
