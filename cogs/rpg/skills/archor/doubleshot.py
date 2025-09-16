@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
 import random
-from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter
+from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter, check_madness
 
 class Archer(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -105,7 +105,29 @@ class Archer(commands.Cog):
             else:
                 return 0, "❌ 빗나감..."
 
-        result_msg = prefix_msg
+        # ================================
+        # 🔹 광란 체크 (시전자 기준)
+        # ================================
+        madness_target = check_madness(user_id, None)
+        if madness_target == user_id:
+            # 광란 발동 → 자기 자신 두 발 맞음
+            dmg1, msg1 = calc_damage()
+            dmg2, msg2 = calc_damage()
+
+            total_dmg = dmg1 + dmg2
+            new_exp = safe_int(user_data.get("현재레벨경험치", 0)) - total_dmg
+            sheet.update_cell(user_idx, 11, new_exp)
+
+            self.log_skill_use(user_id, username, "더블샷", f"광란! 자기 자신 -{total_dmg}")
+            
+            result_msg = ( prefix_msg +
+                f"🤪 광란 발동! {username} 님은 이성을 잃고 자기 자신을 공격했습니다!\n" +
+                f"💥 1발: {msg1} ({dmg1})\n" +
+                f"💥 2발: {msg2} ({dmg2})\n" +
+                f"☠️ 최종 피해: {total_dmg}"
+            )
+            await interaction.followup.send(result_msg)
+            return
 
         # 첫 번째 타겟
         dmg1, msg1 = calc_damage()
