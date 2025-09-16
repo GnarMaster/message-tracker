@@ -15,9 +15,11 @@ class Debuff(commands.Cog):
     def get_buff_log_sheet(self):
         sheet = get_sheet().spreadsheet
         try:
-            return sheet.worksheet("Buff_Log")
+            ws = sheet.worksheet("Buff_Log")
         except:
-            return sheet.add_worksheet(title="Buff_Log", rows=1000, cols=6)
+            ws = sheet.add_worksheet(title="Buff_Log", rows=1000, cols=6)
+            ws.append_row(["사용일시", "유저 ID", "닉네임", "상태", "시전자 ID", "시전자 닉네임"])
+        return ws
 
     # ✅ 효과 기록 추가
     def add_effect(self, target_id: str, target_name: str, effect: str, caster_id: str, caster_name: str):
@@ -29,11 +31,7 @@ class Debuff(commands.Cog):
     def get_effects(self, user_id: str):
         sheet = self.get_buff_log_sheet()
         records = sheet.get_all_records()
-        active = []
-        for row in records:
-            if str(row.get("유저 ID", "")) == str(user_id):
-                active.append(row.get("상태"))
-        return active
+        return [row.get("상태") for row in records if str(row.get("유저 ID", "")) == str(user_id)]
 
     # ✅ 효과 제거
     def remove_effect(self, user_id: str, effect: str):
