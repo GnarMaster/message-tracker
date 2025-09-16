@@ -67,7 +67,13 @@ class Boss(commands.Cog):
             return sheet.worksheet("Boss_History")
         except:
             ws = sheet.add_worksheet(title="Boss_History", rows=1000, cols=10)
-            ws.append_row(["보스이름", "HP_MAX", "소환일시", "처치일시", "마지막공격자", "1등", "2등", "3등", "기타참여자수"])
+            ws.append_row(["보스이름", "HP_MAX", "소환일시", "처치일시",
+               "막타ID", "막타닉네임",
+               "1등ID", "1등닉네임",
+               "2등ID", "2등닉네임",
+               "3등ID", "3등닉네임",
+               "기타참여자수"])
+
             return ws
 
     def get_last_attack_time(self, user_id: str):
@@ -374,15 +380,37 @@ class Boss(commands.Cog):
 
         # ✅ 보스 히스토리 기록
         history = self.get_history_sheet()
+
+        # 마지막 공격자 닉네임
+        try:
+            last_user = await interaction.client.fetch_user(int(last_attacker))
+            last_name = last_user.name
+        except:
+            last_name = "Unknown"
+
+        # 랭킹 상위 3명 (ID + 닉네임)
+        rank_info = []
+        for i in range(3):
+            if len(ranking) > i:
+                uid = ranking[i][0]
+                try:
+                    u = await interaction.client.fetch_user(int(uid))
+                    uname = u.name
+                except:
+                    uname = "Unknown"
+                rank_info.extend([uid, uname])
+            else:
+                rank_info.extend(["", ""])  # 없는 순위는 공백
+ 
         history.append_row([
             boss_name,
             boss.get("HP_MAX", 0),
             boss.get("소환일시", ""),
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            last_attacker,
-            ranking[0][0] if len(ranking) > 0 else "",
-            ranking[1][0] if len(ranking) > 1 else "",
-            ranking[2][0] if len(ranking) > 2 else "",
+            last_attacker, last_name,
+            rank_info[0], rank_info[1],  # 1등
+            rank_info[2], rank_info[3],  # 2등
+            rank_info[4], rank_info[5],  # 3등
             max(0, len(attack_dict) - 3)
         ])
 
