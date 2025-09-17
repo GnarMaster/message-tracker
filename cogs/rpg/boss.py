@@ -414,11 +414,13 @@ class Boss(commands.Cog):
             max(0, len(attack_dict) - 3)
         ])
 
+        base_rewards = [150,125,100]
         # 출력 메시지
         msg = f"🎉 보스 **{boss_name}** 쓰러짐!\n\n🏆 누적 데미지 랭킹:\n"
         medals = ["🥇", "🥈", "🥉"]
         for i, (uid, dmg) in enumerate(ranking[:3]):
-            msg += f"{medals[i]} <@{uid}> ({dmg} 피해) +{rewards[uid]} EXP\n"
+            base_exp = base_rewards[i] if i < len(base_rewards) else 0
+            msg += f"{medals[i]} <@{uid}> ({dmg} 피해) +{base_exp} EXP\n"
 
         msg += f"\n⚔️ 막타: <@{last_attacker}> +200 EXP\n🙌 기타 참여자 전원 +50 EXP"
         await interaction.followup.send(msg)  # ✅ 수정: followup 사용
