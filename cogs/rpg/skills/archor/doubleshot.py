@@ -139,7 +139,7 @@ class Archer(commands.Cog):
 
         if cm1:
             # 반격이면 공격자 경험치 차감
-            result_msg += f"🎯 첫 번째 타겟: {target1.mention} → 공격 무효!\n{counter_msg1}\n"
+            result_msg += f"🎯 첫 번째 타겟: {target1.mention} → 공격 무효!\n{cm1}\n"
         else:
             new_exp1 = safe_int(data1.get("현재레벨경험치", 0)) - dmg1
             sheet.update_cell(idx1, 11, new_exp1)
@@ -151,7 +151,7 @@ class Archer(commands.Cog):
         cm2 = check_counter(user_id, username, str(target2.id), target2.mention, dmg2)
 
         if cm2:
-            result_msg += f"🎯 두 번째 타겟: {target2.mention} → 공격 무효!\n{counter_msg2}\n"
+            result_msg += f"🎯 두 번째 타겟: {target2.mention} → 공격 무효!\n{cm2}\n"
         else:
             if idx1 == idx2:
                 # 같은 대상이면 누적 적용
