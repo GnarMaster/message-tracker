@@ -135,9 +135,9 @@ class Archer(commands.Cog):
         # 첫 번째 타겟
         dmg1, msg1 = calc_damage()
         idx1, data1 = row1
-        counter_msg1, reflected1 = check_counter(user_id, username, str(target1.id), target1.mention, dmg1)
+        cm1 = check_counter(user_id, username, str(target1.id), target1.mention, dmg1)
 
-        if reflected1:
+        if cm1:
             # 반격이면 공격자 경험치 차감
             result_msg += f"🎯 첫 번째 타겟: {target1.mention} → 공격 무효!\n{counter_msg1}\n"
         else:
@@ -148,9 +148,9 @@ class Archer(commands.Cog):
         # 두 번째 타겟
         dmg2, msg2 = calc_damage()
         idx2, data2 = row2
-        counter_msg2, reflected2 = check_counter(user_id, username, str(target2.id), target2.mention, dmg2)
+        cm2 = check_counter(user_id, username, str(target2.id), target2.mention, dmg2)
 
-        if reflected2:
+        if cm2:
             result_msg += f"🎯 두 번째 타겟: {target2.mention} → 공격 무효!\n{counter_msg2}\n"
         else:
             if idx1 == idx2:
