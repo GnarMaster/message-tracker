@@ -65,7 +65,7 @@ class Mage(commands.Cog):
             elif str(row.get("유저 ID", "")) == target_id:
                 target_row = (idx, row)
             else:
-                if safe_int(row.get("레벨", 1)) >= 2:
+                if safe_int(row.get("레벨", 1)) >= 5:
                     candidates.append((idx, row))
 
         if not user_row:
@@ -74,7 +74,7 @@ class Mage(commands.Cog):
         if not target_row:
             await interaction.followup.send("⚠️ 대상 유저의 데이터가 없습니다.")
             return
-        if not candidates:
+        if not candidates and user_row[1].get("직업") != "폭뢰술사":
             await interaction.followup.send("⚠️ 랜덤으로 맞을 유저(레벨 2 이상)가 없습니다.")
             return
 
@@ -89,10 +89,16 @@ class Mage(commands.Cog):
                 clear_copied_skill(user_id)
                 prefix_msg = f"💀 카피닌자 {interaction.user.name}님이 복사한 스킬 **체인라이트닝**을 발동!\n"
         else:
-            if job != "마법사":
-                await interaction.followup.send("❌ 마법사만 사용할 수 있는 스킬입니다!", ephemeral=True)
+            if job not in ["마법사", "폭뢰술사", "연격마도사"]:
+                await interaction.followup.send("❌ 마법사 계열만 사용할 수 있는 스킬입니다!", ephemeral=True)
                 return
-            prefix_msg = f"🔮 {interaction.user.name}님의 **체인라이트닝** 발동!\n"
+
+            if job == "폭뢰술사":
+                prefix_msg = f"⚡ 폭뢰술사 {interaction.user.name}님의 **체인라이트닝** 집중 발동!\n"
+            elif job == "연격마도사":
+                prefix_msg = f"🔮 연격마도사 {interaction.user.name}님의 **체인라이트닝** 연격 발동!\n"
+            else:
+                prefix_msg = f"🔮 {interaction.user.name}님의 **체인라이트닝** 발동!\n"
 
         level = safe_int(user_row[1].get("레벨", 1))
 
@@ -107,72 +113,154 @@ class Mage(commands.Cog):
         damage_logs = []
         counter_msgs = []
 
-        # 1️⃣ 지정 타겟 (mention 포함)
-        target_idx, target_data = target_row
-        dmg = base_damage
-        if random.randint(1, 100) <= 10:
-            dmg *= 2
-            msg1 = "🔥 치명타!"
-        else:
-            msg1 = msg_base
-        new_exp = safe_int(target_data.get("현재레벨경험치", 0)) - dmg
-        sheet.update_cell(target_idx, 11, new_exp)
-        damage_logs.append(f"🎯 지정 타겟 {target.mention} → {msg1} ({dmg})")
+        # ======================
+        # 🔹 폭뢰술사 (집중 공격)
+        # ======================
+        if job == "폭뢰술사":
+            multiplier = 1
+            hit = True
+            i = 1
 
-        cm = check_counter(user_id, username, target_id, target.mention, dmg)
-        if cm:
-            counter_msgs.append(cm)
+            while hit and multiplier >= 1/64:
+                dmg = max(1, int(base_damage * multiplier))
+                if random.randint(1, 100) <= 10:  # 치명타
+                    dmg *= 2
+                    msgX = "🔥 치명타!"
+                else:
+                    msgX = "✅ 명중!"
+                target_idx, target_data = target_row
+                new_exp = safe_int(target_data.get("현재레벨경험치", 0)) - dmg
+                sheet.update_cell(target_idx, 11, new_exp)
+                damage_logs.append(f"⚡ 집중 {i}타: {target.mention} → {msgX} ({dmg})")
 
-        # 2️⃣ 첫 랜덤 타겟 (닉네임만)
-        if candidates:
-            rand_idx, rand_data = random.choice(candidates)
-            rand_id = str(rand_data.get("유저 ID"))
-            candidates.remove((rand_idx, rand_data))
+                cm = check_counter(user_id, username, target_id, target.mention, dmg)
+                if cm:
+                    counter_msgs.append(cm)
 
-            base = base_damage // 2
-            if base > 0:
+                if i >= 2:
+                    hit = random.random() <= 0.5
+                i += 1
+                multiplier /= 2
+
+        # ======================
+        # 🔹 연격마도사 (앞 2타 고정, 이후 랜덤)
+        # ======================
+        elif job == "연격마도사":
+            # 1, 2타 → 지정 타겟
+            target_idx, target_data = target_row
+            for i in range(2):
+                dmg = base_damage
+                if random.randint(1, 100) <= 10:
+                    dmg *= 2
+                    msgX = "🔥 치명타!"
+                else:
+                    msgX = "✅ 명중!"
+                new_exp = safe_int(target_data.get("현재레벨경험치", 0)) - dmg
+                sheet.update_cell(target_idx, 11, new_exp)
+                damage_logs.append(f"⚡ {i+1}타: {target.mention} → {msgX} ({dmg})")
+
+                cm = check_counter(user_id, username, target_id, target.mention, dmg)
+                if cm:
+                    counter_msgs.append(cm)
+
+            # 3타 이후 → 랜덤 분산
+            prob = 0.5
+            step = 3
+            while candidates and random.random() < prob:
+                base = base_damage // step
+                if base <= 0:
+                    break
                 dmg = base
                 if random.randint(1, 100) <= 10:
                     dmg *= 2
-                    msg2 = "🔥 치명타!"
+                    msgX = "🔥 치명타!"
                 else:
-                    msg2 = "✅ 명중!"
+                    msgX = "✅ 명중!"
+                rand_idx, rand_data = random.choice(candidates)
+                rand_id = str(rand_data.get("유저 ID"))
+                candidates.remove((rand_idx, rand_data))
                 new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) - dmg
                 sheet.update_cell(rand_idx, 11, new_exp)
                 rand_name = rand_data.get("닉네임", f"ID:{rand_id}")
-                damage_logs.append(f"⚡ 연쇄 번개: {rand_name} → {msg2} ({dmg})")
+                damage_logs.append(f"⚡ 추가 연격: {rand_name} → {msgX} ({dmg})")
 
                 cm = check_counter(user_id, username, rand_id, f"<@{rand_id}>", dmg)
                 if cm:
                     counter_msgs.append(cm)
 
-                # 3️⃣ 추가 연쇄 (닉네임만)
-                prob = 0.5
-                step = 4
-                while candidates and random.random() < prob:
-                    base = base_damage // step
-                    if base <= 0:
-                        break
+                prob *= 0.5
+                step += 1
+
+        # ======================
+        # 🔹 기본 마법사 체라
+        # ======================
+        else:
+            # 1️⃣ 지정 타겟
+            target_idx, target_data = target_row
+            dmg = base_damage
+            if random.randint(1, 100) <= 10:
+                dmg *= 2
+                msg1 = "🔥 치명타!"
+            else:
+                msg1 = msg_base
+            new_exp = safe_int(target_data.get("현재레벨경험치", 0)) - dmg
+            sheet.update_cell(target_idx, 11, new_exp)
+            damage_logs.append(f"🎯 지정 타겟 {target.mention} → {msg1} ({dmg})")
+
+            cm = check_counter(user_id, username, target_id, target.mention, dmg)
+            if cm:
+                counter_msgs.append(cm)
+
+            # 2️⃣ 첫 랜덤 타겟
+            if candidates:
+                rand_idx, rand_data = random.choice(candidates)
+                rand_id = str(rand_data.get("유저 ID"))
+                candidates.remove((rand_idx, rand_data))
+
+                base = base_damage // 2
+                if base > 0:
                     dmg = base
                     if random.randint(1, 100) <= 10:
                         dmg *= 2
-                        msgX = "🔥 치명타!"
+                        msg2 = "🔥 치명타!"
                     else:
-                        msgX = "✅ 명중!"
-                    rand_idx, rand_data = random.choice(candidates)
-                    rand_id = str(rand_data.get("유저 ID"))
-                    candidates.remove((rand_idx, rand_data))
+                        msg2 = "✅ 명중!"
                     new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) - dmg
                     sheet.update_cell(rand_idx, 11, new_exp)
                     rand_name = rand_data.get("닉네임", f"ID:{rand_id}")
-                    damage_logs.append(f"⚡ 추가 연쇄: {rand_name} → {msgX} ({dmg})")
+                    damage_logs.append(f"⚡ 연쇄 번개: {rand_name} → {msg2} ({dmg})")
 
                     cm = check_counter(user_id, username, rand_id, f"<@{rand_id}>", dmg)
                     if cm:
                         counter_msgs.append(cm)
 
-                    prob *= 0.5
-                    step *= 2
+                    # 3️⃣ 추가 연쇄
+                    prob = 0.5
+                    step = 4
+                    while candidates and random.random() < prob:
+                        base = base_damage // step
+                        if base <= 0:
+                            break
+                        dmg = base
+                        if random.randint(1, 100) <= 10:
+                            dmg *= 2
+                            msgX = "🔥 치명타!"
+                        else:
+                            msgX = "✅ 명중!"
+                        rand_idx, rand_data = random.choice(candidates)
+                        rand_id = str(rand_data.get("유저 ID"))
+                        candidates.remove((rand_idx, rand_data))
+                        new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) - dmg
+                        sheet.update_cell(rand_idx, 11, new_exp)
+                        rand_name = rand_data.get("닉네임", f"ID:{rand_id}")
+                        damage_logs.append(f"⚡ 추가 연쇄: {rand_name} → {msgX} ({dmg})")
+
+                        cm = check_counter(user_id, username, rand_id, f"<@{rand_id}>", dmg)
+                        if cm:
+                            counter_msgs.append(cm)
+
+                        prob *= 0.5
+                        step *= 2
 
         # 로그 기록
         self.log_skill_use(user_id, username, "체라", "; ".join(damage_logs))
