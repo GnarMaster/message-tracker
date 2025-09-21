@@ -235,7 +235,7 @@ class Boss(commands.Cog):
                 total_damage = int(total_damage * 1.5)
                 
         # 🔮 마법사 - 체인라이트닝 (모든 타격 보스 집중)
-        elif job == "마법사":
+        elif job in ["마법사","폭뢰술사","연격마도사"]:
             header_msg = f"🔮 {user.name} 님의 **체인라이트닝** 발동!"
             base = 6 + level
             total_damage = 0
@@ -263,7 +263,7 @@ class Boss(commands.Cog):
                 multiplier /= 2
 
         # 🏹 궁수 - 더블샷 (보스에게 2발)
-        elif job == "궁수":
+        elif job in ["궁수","저격수","연사수"]:
             header_msg = f"🏹 {user.name} 님의 **더블샷** 발동!"
             for i in range(2):
                 base = 10 + level
@@ -315,7 +315,7 @@ class Boss(commands.Cog):
                 total_damage = int(total_damage * 1.5)
 
         # 💣 특수 - 폭탄
-        elif job == "특수":
+        elif job in ["특수","축제광","파괴광"]:
             header_msg = f"💣 {user.name} 님이 보스에게 **폭탄**을 던졌다!"
             roll = random.uniform(0, 100)
             if roll <= 70:
