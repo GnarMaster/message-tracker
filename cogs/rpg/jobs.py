@@ -29,17 +29,14 @@ class JobSelectView(View):
     async def select_callback(self, interaction: discord.Interaction, select: discord.ui.Select):
         chosen_job = select.values[0]
 
-        # ✅ 시트 업데이트
         sheet = get_sheet()
         sheet.update_cell(self.row_idx, 12, chosen_job)
 
-        # ✅ 본인 안내
         await interaction.response.edit_message(
             content=f"✅ 전직이 완료되었습니다! {get_job_icon(chosen_job)} **{chosen_job}**",
             view=None
         )
 
-        # ✅ 전체 공지
         channel = self.bot.get_channel(self.channel_id)
         if channel:
             await channel.send(
@@ -56,7 +53,7 @@ class SecondJobSelectView(View):
         self.bot = bot
         self.channel_id = channel_id
 
-        # ✅ 구현 완료된 2차 전직 옵션만 제공
+        # 구현 완료된 2차 직업만 제공
         job_options = {
             "전사": [
                 discord.SelectOption(label="검성", description="4연격, 강력한 추가타", emoji="🗡️"),
@@ -66,12 +63,10 @@ class SecondJobSelectView(View):
             "마법사": [
                 discord.SelectOption(label="폭뢰술사", description="모든 번개를 한 대상에 집중", emoji="⚡"),
                 discord.SelectOption(label="연격마도사", description="2타는 지정 대상 공격, 뒤는 랜덤 연격", emoji="🔮"),
-                # 원소술사 ❌ 미구현 → 제외
             ],
             "궁수": [
-                discord.SelectOption(label="저격수", description="치명적인 단일 저격(2번째 대상 무효)", emoji="🎯"),
+                discord.SelectOption(label="저격수", description="치명적인 단일 저격(추가데미지)", emoji="🎯"),
                 discord.SelectOption(label="연사수", description="2타후 랜덤 대상 추가 일격", emoji="🏹"),
-                # 사냥꾼 ❌ 미구현 → 제외
             ],
             "도적": [
                 discord.SelectOption(label="암살자", description="연속 스틸 가능성", emoji="🗡️"),
@@ -81,13 +76,12 @@ class SecondJobSelectView(View):
             "특수": [
                 discord.SelectOption(label="파괴광", description="추가 폭발 피해", emoji="💥"),
                 discord.SelectOption(label="축제광", description="랜덤 인원에 랜덤 효과 발생", emoji="🎉"),
-                # 미치광이 ❌ 미구현 → 제외
             ],
         }
 
         options = job_options.get(first_job, [])
 
-        # ✅ select를 직접 생성
+        # ✅ Select 컴포넌트 생성 후 View에 추가
         select = discord.ui.Select(
             placeholder="2차 전직할 직업을 선택하세요!",
             min_values=1,
@@ -95,23 +89,25 @@ class SecondJobSelectView(View):
             options=options
         )
 
-    async def select_callback(self, interaction: discord.Interaction, select: discord.ui.Select):
-        chosen_job = select.values[0]
+        async def select_callback(interaction: discord.Interaction):
+            chosen_job = select.values[0]
+            sheet = get_sheet()
+            sheet.update_cell(self.row_idx, 12, chosen_job)
 
-        sheet = get_sheet()
-        sheet.update_cell(self.row_idx, 12, chosen_job)
-
-        await interaction.response.edit_message(
-            content=f"✅ 2차 전직 완료! {get_job_icon(chosen_job)} **{chosen_job}**",
-            view=None
-        )
-
-        channel = self.bot.get_channel(self.channel_id)
-        if channel:
-            await channel.send(
-                f"🎉 {interaction.user.mention} 님이 "
-                f"{get_job_icon(chosen_job)} **{chosen_job}** 으로 2차 전직했습니다!"
+            await interaction.response.edit_message(
+                content=f"✅ 2차 전직 완료! {get_job_icon(chosen_job)} **{chosen_job}**",
+                view=None
             )
+
+            channel = self.bot.get_channel(self.channel_id)
+            if channel:
+                await channel.send(
+                    f"🎉 {interaction.user.mention} 님이 "
+                    f"{get_job_icon(chosen_job)} **{chosen_job}** 으로 2차 전직했습니다!"
+                )
+
+        select.callback = select_callback
+        self.add_item(select)
 
 
 # ✅ Cog
@@ -185,7 +181,7 @@ class JobCog(commands.Cog):
                     )
                     return
 
-                if job not in ["전사","마법사","궁수","도적","특수"]:
+                if job not in ["전사", "마법사", "궁수", "도적", "특수"]:
                     await interaction.followup.send(
                         f"❌ 이미 `{job}` 직업입니다. (2차 전직 완료)",
                         ephemeral=True
