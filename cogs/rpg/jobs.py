@@ -5,6 +5,8 @@ from discord.ui import View
 
 from utils import get_sheet, safe_int, get_job_icon
 
+
+# ✅ 1차 전직 선택 UI
 class JobSelectView(View):
     def __init__(self, row_idx: int, bot: commands.Bot, channel_id: int):
         super().__init__(timeout=60)
@@ -31,13 +33,13 @@ class JobSelectView(View):
         sheet = get_sheet()
         sheet.update_cell(self.row_idx, 12, chosen_job)
 
-        # ✅ 본인에게 안내 (ephemeral)
+        # ✅ 본인 안내
         await interaction.response.edit_message(
-            content=f"✅ 전직이 완료되었습니다! {chosen_job} {get_job_icon(chosen_job)}",
+            content=f"✅ 전직이 완료되었습니다! {get_job_icon(chosen_job)} **{chosen_job}**",
             view=None
         )
 
-        # ✅ 전체 채널 공지
+        # ✅ 전체 공지
         channel = self.bot.get_channel(self.channel_id)
         if channel:
             await channel.send(
@@ -45,10 +47,77 @@ class JobSelectView(View):
                 f"{get_job_icon(chosen_job)} **{chosen_job}** 으로 전직하였습니다!"
             )
 
+
+# ✅ 2차 전직 선택 UI
+class SecondJobSelectView(View):
+    def __init__(self, row_idx: int, bot: commands.Bot, channel_id: int, first_job: str):
+        super().__init__(timeout=60)
+        self.row_idx = row_idx
+        self.bot = bot
+        self.channel_id = channel_id
+
+        # ✅ 구현 완료된 2차 전직 옵션만 제공
+        job_options = {
+            "전사": [
+                discord.SelectOption(label="검성", description="4연격, 강력한 추가타", emoji="🗡️"),
+                discord.SelectOption(label="검투사", description="반격 버프 사용", emoji="🛡️"),
+                discord.SelectOption(label="투신", description="삼연격 후 랜덤 대상 추가 일격", emoji="🪓"),
+            ],
+            "마법사": [
+                discord.SelectOption(label="폭뢰술사", description="모든 번개를 한 대상에 집중", emoji="⚡"),
+                discord.SelectOption(label="연격마도사", description="2타는 지정 대상 공격, 뒤는 랜덤 연격", emoji="🔮"),
+                # 원소술사 ❌ 미구현 → 제외
+            ],
+            "궁수": [
+                discord.SelectOption(label="저격수", description="치명적인 단일 저격(추가데미지)", emoji="🎯"),
+                discord.SelectOption(label="연사수", description="2타후 랜덤 대상 추가 일격", emoji="🏹"),
+                # 사냥꾼 ❌ 미구현 → 제외
+            ],
+            "도적": [
+                discord.SelectOption(label="암살자", description="연속 스틸 가능성", emoji="🗡️"),
+                discord.SelectOption(label="의적", description="훔친 경험치 일부 분배", emoji="📦"),
+                discord.SelectOption(label="카피닌자", description="상대의 스킬 복사", emoji="💀"),
+            ],
+            "특수": [
+                discord.SelectOption(label="파괴광", description="추가 폭발 피해", emoji="💥"),
+                discord.SelectOption(label="축제광", description="랜덤 인원에 랜덤 효과 발생", emoji="🎉"),
+                # 미치광이 ❌ 미구현 → 제외
+            ],
+        }
+
+        self.select.options = job_options.get(first_job, [])
+
+    @discord.ui.select(
+        placeholder="2차 전직할 직업을 선택하세요!",
+        min_values=1,
+        max_values=1,
+        options=[]  # __init__에서 채움
+    )
+    async def select_callback(self, interaction: discord.Interaction, select: discord.ui.Select):
+        chosen_job = select.values[0]
+
+        sheet = get_sheet()
+        sheet.update_cell(self.row_idx, 12, chosen_job)
+
+        await interaction.response.edit_message(
+            content=f"✅ 2차 전직 완료! {get_job_icon(chosen_job)} **{chosen_job}**",
+            view=None
+        )
+
+        channel = self.bot.get_channel(self.channel_id)
+        if channel:
+            await channel.send(
+                f"🎉 {interaction.user.mention} 님이 "
+                f"{get_job_icon(chosen_job)} **{chosen_job}** 으로 2차 전직했습니다!"
+            )
+
+
+# ✅ Cog
 class JobCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    # 1차 전직
     @app_commands.command(name="전직", description="레벨 5 이상 백수만 전직할 수 있습니다.")
     async def 전직(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
@@ -59,27 +128,23 @@ class JobCog(commands.Cog):
 
         for idx, row in enumerate(records, start=2):
             if str(row.get("유저 ID", "")) == user_id:
-                current_level = safe_int(row.get("레벨", 1))
-                current_job = row.get("직업", "백수")
+                level = safe_int(row.get("레벨", 1))
+                job = row.get("직업", "백수")
 
-                # 🔴 레벨 부족
-                if current_level < 5:
+                if level < 5:
                     await interaction.followup.send(
-                        f"❌ {interaction.user.mention} 님은 아직 레벨이 부족합니다! "
-                        "레벨 5 이상만 전직할 수 있어요.",
+                        f"❌ {interaction.user.mention} 님은 아직 레벨이 부족합니다! (5 이상 필요)",
                         ephemeral=True
                     )
                     return
 
-                # 🔴 이미 직업 있음 → 전직 불가
-                if current_job != "백수":
+                if job != "백수":
                     await interaction.followup.send(
-                        f"❌ {interaction.user.mention} 님은 이미 `{current_job}` 직업입니다.",
+                        f"❌ 이미 `{job}` 직업입니다.",
                         ephemeral=True
                     )
                     return
 
-                # ✅ 조건 충족 → 전직 UI 띄우기
                 view = JobSelectView(idx, self.bot, interaction.channel.id)
                 await interaction.followup.send(
                     "⚔️ 전직할 직업을 선택하세요:",
@@ -88,11 +153,53 @@ class JobCog(commands.Cog):
                 )
                 return
 
-        # 🔴 유저 데이터 없음
-        await interaction.followup.send(
-            "⚠️ 유저 데이터를 찾을 수 없어요. 메시지를 좀 더 쳐야 기록이 생길 수 있어요!",
-            ephemeral=True
-        )
+        await interaction.followup.send("⚠️ 유저 데이터를 찾을 수 없습니다.", ephemeral=True)
+
+    # 2차 전직
+    @app_commands.command(name="2차전직", description="레벨 10 이상 1차 전직자만 2차 전직할 수 있습니다.")
+    async def second_job(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        sheet = get_sheet()
+        records = sheet.get_all_records()
+        user_id = str(interaction.user.id)
+
+        for idx, row in enumerate(records, start=2):
+            if str(row.get("유저 ID", "")) == user_id:
+                level = safe_int(row.get("레벨", 1))
+                job = row.get("직업", "백수")
+
+                if level < 10:
+                    await interaction.followup.send(
+                        f"❌ {interaction.user.mention} 님은 레벨 10 이상만 2차 전직할 수 있어요.",
+                        ephemeral=True
+                    )
+                    return
+
+                if job in ["백수"]:
+                    await interaction.followup.send(
+                        f"❌ 아직 1차 전직을 하지 않았습니다. `/전직` 먼저 하세요!",
+                        ephemeral=True
+                    )
+                    return
+
+                if job not in ["전사","마법사","궁수","도적","특수"]:
+                    await interaction.followup.send(
+                        f"❌ 이미 `{job}` 직업입니다. (2차 전직 완료)",
+                        ephemeral=True
+                    )
+                    return
+
+                view = SecondJobSelectView(idx, self.bot, interaction.channel.id, job)
+                await interaction.followup.send(
+                    f"⚔️ {interaction.user.mention} 님, 2차 전직 직업을 선택하세요:",
+                    view=view,
+                    ephemeral=True
+                )
+                return
+
+        await interaction.followup.send("⚠️ 유저 데이터를 찾을 수 없습니다.", ephemeral=True)
+
 
 async def setup(bot):
     await bot.add_cog(JobCog(bot))
