@@ -69,7 +69,7 @@ class SecondJobSelectView(View):
                 # 원소술사 ❌ 미구현 → 제외
             ],
             "궁수": [
-                discord.SelectOption(label="저격수", description="치명적인 단일 저격(추가데미지)", emoji="🎯"),
+                discord.SelectOption(label="저격수", description="치명적인 단일 저격(2번째 대상 무효)", emoji="🎯"),
                 discord.SelectOption(label="연사수", description="2타후 랜덤 대상 추가 일격", emoji="🏹"),
                 # 사냥꾼 ❌ 미구현 → 제외
             ],
