@@ -1,4 +1,4 @@
-    import discord
+import discord
 from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
@@ -75,7 +75,7 @@ class Mage(commands.Cog):
             await interaction.followup.send("⚠️ 대상 유저의 데이터가 없습니다.")
             return
         if not candidates and user_row[1].get("직업") != "폭뢰술사":
-            await interaction.followup.send("⚠️ 랜덤으로 맞을 유저(레벨 2 이상)가 없습니다.")
+            await interaction.followup.send("⚠️ 랜덤으로 맞을 유저(레벨 5 이상)가 없습니다.")
             return
 
         job = user_row[1].get("직업", "백수")
@@ -120,6 +120,8 @@ class Mage(commands.Cog):
             multiplier = 1
             hit = True
             i = 1
+            target_idx, target_data = target_row
+            target_name = target_data.get("닉네임", target.name)
 
             while hit and multiplier >= 1/64:
                 dmg = max(1, int(base_damage * multiplier))
@@ -128,10 +130,14 @@ class Mage(commands.Cog):
                     msgX = "🔥 치명타!"
                 else:
                     msgX = "✅ 명중!"
-                target_idx, target_data = target_row
+
                 new_exp = safe_int(target_data.get("현재레벨경험치", 0)) - dmg
                 sheet.update_cell(target_idx, 11, new_exp)
-                damage_logs.append(f"⚡ 집중 {i}타: {target.mention} → {msgX} ({dmg})")
+
+                if i == 1:
+                    damage_logs.append(f"⚡ 집중 {i}타: {target.mention} → {msgX} ({dmg})")
+                else:
+                    damage_logs.append(f"⚡ 집중 {i}타: {target_name} → {msgX} ({dmg})")
 
                 cm = check_counter(user_id, username, target_id, target.mention, dmg)
                 if cm:
@@ -145,7 +151,7 @@ class Mage(commands.Cog):
         # ======================
         # 🔹 연격마도사 (앞 2타 고정, 이후 랜덤)
         # ======================
-       elif job == "연격마도사":
+        elif job == "연격마도사":
             target_idx, target_data = target_row
             target_name = target_data.get("닉네임", target.name)
 
@@ -160,9 +166,9 @@ class Mage(commands.Cog):
                 new_exp = safe_int(target_data.get("현재레벨경험치", 0)) - dmg
                 sheet.update_cell(target_idx, 11, new_exp)
 
-                if i == 0:  # 첫 타는 mention
+                if i == 0:
                     damage_logs.append(f"⚡ {i+1}타: {target.mention} → {msgX} ({dmg})")
-                else:       # 이후는 닉네임
+                else:
                     damage_logs.append(f"⚡ {i+1}타: {target_name} → {msgX} ({dmg})")
 
                 cm = check_counter(user_id, username, target_id, target.mention, dmg)
