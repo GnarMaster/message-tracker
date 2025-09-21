@@ -1,4 +1,4 @@
-import discord
+    import discord
 from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
@@ -145,9 +145,11 @@ class Mage(commands.Cog):
         # ======================
         # 🔹 연격마도사 (앞 2타 고정, 이후 랜덤)
         # ======================
-        elif job == "연격마도사":
-            # 1, 2타 → 지정 타겟
+       elif job == "연격마도사":
             target_idx, target_data = target_row
+            target_name = target_data.get("닉네임", target.name)
+
+            # 1, 2타 → 지정 타겟 (첫 타만 멘션)
             for i in range(2):
                 dmg = base_damage
                 if random.randint(1, 100) <= 10:
@@ -157,13 +159,17 @@ class Mage(commands.Cog):
                     msgX = "✅ 명중!"
                 new_exp = safe_int(target_data.get("현재레벨경험치", 0)) - dmg
                 sheet.update_cell(target_idx, 11, new_exp)
-                damage_logs.append(f"⚡ {i+1}타: {target.mention} → {msgX} ({dmg})")
+
+                if i == 0:  # 첫 타는 mention
+                    damage_logs.append(f"⚡ {i+1}타: {target.mention} → {msgX} ({dmg})")
+                else:       # 이후는 닉네임
+                    damage_logs.append(f"⚡ {i+1}타: {target_name} → {msgX} ({dmg})")
 
                 cm = check_counter(user_id, username, target_id, target.mention, dmg)
                 if cm:
                     counter_msgs.append(cm)
 
-            # 3타 이후 → 랜덤 분산
+            # 3타 이후 → 랜덤 분산 (닉네임만 출력)
             prob = 0.5
             step = 3
             while candidates and random.random() < prob:
@@ -181,6 +187,7 @@ class Mage(commands.Cog):
                 candidates.remove((rand_idx, rand_data))
                 new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) - dmg
                 sheet.update_cell(rand_idx, 11, new_exp)
+
                 rand_name = rand_data.get("닉네임", f"ID:{rand_id}")
                 damage_logs.append(f"⚡ 추가 연격: {rand_name} → {msgX} ({dmg})")
 
