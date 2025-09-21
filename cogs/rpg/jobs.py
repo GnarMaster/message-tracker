@@ -85,14 +85,16 @@ class SecondJobSelectView(View):
             ],
         }
 
-        self.select.options = job_options.get(first_job, [])
+        options = job_options.get(first_job, [])
 
-    @discord.ui.select(
-        placeholder="2차 전직할 직업을 선택하세요!",
-        min_values=1,
-        max_values=1,
-        options=[]  # __init__에서 채움
-    )
+        # ✅ select를 직접 생성
+        select = discord.ui.Select(
+            placeholder="2차 전직할 직업을 선택하세요!",
+            min_values=1,
+            max_values=1,
+            options=options
+        )
+
     async def select_callback(self, interaction: discord.Interaction, select: discord.ui.Select):
         chosen_job = select.values[0]
 
