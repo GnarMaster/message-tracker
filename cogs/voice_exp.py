@@ -64,9 +64,10 @@ class VoiceExp(commands.Cog):
                     minutes = (datetime.now() - start_time).seconds // 60
                     exp = (minutes // 10) * 30
                     row_num = len(records) - idx + 2
-                    ws_stream.update(f"D{row_num}", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-                    ws_stream.update(f"E{row_num}", minutes)
-                    ws_stream.update(f"F{row_num}", exp)
+                    ws_stream.update(
+                        f"D{row_num}:F{row_num}",
+                        [[datetime.now().strftime("%Y-%m-%d %H:%M:%S"), minutes, exp]]
+                    )
                     break
 
         # 🚪 음성채널 퇴장
@@ -81,7 +82,7 @@ class VoiceExp(commands.Cog):
 
             sheet = get_sheet().spreadsheet
 
-            # Voice_Log 갱신
+            # Voice_Log 갱신 (퇴장시간, 음성시간, EXP 한 번에 업데이트)
             ws_voice = self.get_or_create_sheet(
                 "Voice_Log",
                 ["유저 ID","닉네임","입장시간","퇴장시간","음성시간(분)","지급 EXP"]
@@ -90,9 +91,10 @@ class VoiceExp(commands.Cog):
             for idx, row in enumerate(reversed(records), start=2):
                 if str(row["유저 ID"]) == user_id and row["퇴장시간"] == "":
                     row_num = len(records) - idx + 2
-                    ws_voice.update(f"D{row_num}", leave_time.strftime("%Y-%m-%d %H:%M:%S"))
-                    ws_voice.update(f"E{row_num}", minutes)
-                    ws_voice.update(f"F{row_num}", voice_exp)
+                    ws_voice.update(
+                        f"D{row_num}:F{row_num}",
+                        [[leave_time.strftime("%Y-%m-%d %H:%M:%S"), minutes, voice_exp]]
+                    )
                     break
 
             # 🎥 Stream 로그 합산 (이번 세션 안의 기록만)
@@ -107,7 +109,6 @@ class VoiceExp(commands.Cog):
                 if str(row["유저 ID"]) == user_id and row["종료시간"] != "":
                     start_time = datetime.strptime(row["시작시간"], "%Y-%m-%d %H:%M:%S")
                     end_time = datetime.strptime(row["종료시간"], "%Y-%m-%d %H:%M:%S")
-                    # 이번 세션 범위 안에서만 합산
                     if start_time >= join_time and end_time <= leave_time:
                         stream_minutes += safe_int(row["화면공유시간(분)"])
                         stream_exp += safe_int(row["지급 EXP"])
