@@ -6,84 +6,130 @@ from utils import get_sheet, safe_int
 class VoiceExp(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        # {user_id: {"start": datetime, "stream_start": datetime|None, "stream_total": int}}
-        self.voice_sessions = {}
+        self.voice_sessions = {}  # {user_id: 입장시간}
+
+    def get_or_create_sheet(self, title, headers):
+        sheet = get_sheet().spreadsheet
+        try:
+            ws = sheet.worksheet(title)
+        except:
+            ws = sheet.add_worksheet(title=title, rows=1000, cols=len(headers))
+            ws.append_row(headers)
+        return ws
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         user_id = str(member.id)
+        user_name = member.name
 
-        # 🎧 음성 채널 입장
+        # 🎧 음성채널 입장
         if before.channel is None and after.channel is not None:
-            self.voice_sessions[user_id] = {
-                "start": datetime.now(),
-                "stream_start": None,
-                "stream_total": 0
-            }
+            self.voice_sessions[user_id] = datetime.now()
+
+            ws_voice = self.get_or_create_sheet(
+                "Voice_Log",
+                ["유저 ID","닉네임","입장시간","퇴장시간","음성시간(분)","지급 EXP"]
+            )
+            ws_voice.append_row([
+                user_id,
+                user_name,
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "", "", ""
+            ])
 
         # 📺 화면공유 시작
         elif before.self_stream is False and after.self_stream is True:
-            if user_id in self.voice_sessions:
-                self.voice_sessions[user_id]["stream_start"] = datetime.now()
+            ws_stream = self.get_or_create_sheet(
+                "Voice_Stream_Log",
+                ["유저 ID","닉네임","시작시간","종료시간","화면공유시간(분)","지급 EXP"]
+            )
+            ws_stream.append_row([
+                user_id,
+                user_name,
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "", "", ""
+            ])
 
         # 📺 화면공유 종료
         elif before.self_stream is True and after.self_stream is False:
-            if user_id in self.voice_sessions and self.voice_sessions[user_id]["stream_start"]:
-                start = self.voice_sessions[user_id]["stream_start"]
-                self.voice_sessions[user_id]["stream_total"] += (datetime.now() - start).seconds // 60
-                self.voice_sessions[user_id]["stream_start"] = None
+            sheet = get_sheet().spreadsheet
+            ws_stream = self.get_or_create_sheet(
+                "Voice_Stream_Log",
+                ["유저 ID","닉네임","시작시간","종료시간","화면공유시간(분)","지급 EXP"]
+            )
+            records = ws_stream.get_all_records()
+            for idx, row in enumerate(reversed(records), start=2):
+                if str(row["유저 ID"]) == user_id and row["종료시간"] == "":
+                    start_time = datetime.strptime(row["시작시간"], "%Y-%m-%d %H:%M:%S")
+                    minutes = (datetime.now() - start_time).seconds // 60
+                    exp = (minutes // 10) * 30
+                    row_num = len(records) - idx + 2
+                    ws_stream.update(f"D{row_num}", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                    ws_stream.update(f"E{row_num}", minutes)
+                    ws_stream.update(f"F{row_num}", exp)
+                    break
 
-        # 🚪 음성 채널 퇴장
+        # 🚪 음성채널 퇴장
         elif before.channel is not None and after.channel is None:
-            if user_id in self.voice_sessions:
-                session = self.voice_sessions.pop(user_id)
-                minutes = (datetime.now() - session["start"]).seconds // 60
+            if user_id not in self.voice_sessions:
+                return
 
-                # 아직 켜져있는 화면공유 있으면 반영
-                if session["stream_start"]:
-                    session["stream_total"] += (datetime.now() - session["stream_start"]).seconds // 60
+            join_time = self.voice_sessions.pop(user_id)
+            leave_time = datetime.now()
+            minutes = (leave_time - join_time).seconds // 60
+            voice_exp = (minutes // 10) * 20
 
-                # ✅ EXP 계산 (10분 단위 floor)
-                voice_blocks = minutes // 10
-                stream_blocks = session["stream_total"] // 10
-                voice_exp = voice_blocks * 20
-                stream_exp = stream_blocks * 30
-                total_exp = voice_exp + stream_exp
+            sheet = get_sheet().spreadsheet
 
-                # 📊 Voice_Log 시트 기록
-                sheet = get_sheet().spreadsheet
-                try:
-                    ws = sheet.worksheet("Voice_Log")
-                except:
-                    ws = sheet.add_worksheet(title="Voice_Log", rows=1000, cols=7)
-                    ws.append_row(["유저 ID","닉네임","입장시간","퇴장시간","음성시간(분)","화면공유시간(분)","지급 EXP"])
-                ws.append_row([
-                    user_id,
-                    member.name,
-                    session["start"].strftime("%Y-%m-%d %H:%M:%S"),
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    minutes,
-                    session["stream_total"],
-                    total_exp
-                ])
+            # Voice_Log 갱신
+            ws_voice = self.get_or_create_sheet(
+                "Voice_Log",
+                ["유저 ID","닉네임","입장시간","퇴장시간","음성시간(분)","지급 EXP"]
+            )
+            records = ws_voice.get_all_records()
+            for idx, row in enumerate(reversed(records), start=2):
+                if str(row["유저 ID"]) == user_id and row["퇴장시간"] == "":
+                    row_num = len(records) - idx + 2
+                    ws_voice.update(f"D{row_num}", leave_time.strftime("%Y-%m-%d %H:%M:%S"))
+                    ws_voice.update(f"E{row_num}", minutes)
+                    ws_voice.update(f"F{row_num}", voice_exp)
+                    break
 
-                # 💾 메인 시트 경험치 업데이트 (sheet1, K열 = 현재레벨경험치)
-                if total_exp > 0:
-                    main_sheet = sheet.sheet1
-                    records = main_sheet.get_all_records()
-                    for idx, row in enumerate(records, start=2):
-                        if str(row.get("유저 ID")) == user_id:
-                            new_exp = safe_int(row.get("현재레벨경험치", 0)) + total_exp
-                            main_sheet.update_cell(idx, 11, new_exp)  # 11번 열 = K열
-                            break
+            # 🎥 Stream 로그 합산 (이번 세션 안의 기록만)
+            ws_stream = self.get_or_create_sheet(
+                "Voice_Stream_Log",
+                ["유저 ID","닉네임","시작시간","종료시간","화면공유시간(분)","지급 EXP"]
+            )
+            stream_records = ws_stream.get_all_records()
+            stream_minutes = 0
+            stream_exp = 0
+            for row in stream_records:
+                if str(row["유저 ID"]) == user_id and row["종료시간"] != "":
+                    start_time = datetime.strptime(row["시작시간"], "%Y-%m-%d %H:%M:%S")
+                    end_time = datetime.strptime(row["종료시간"], "%Y-%m-%d %H:%M:%S")
+                    # 이번 세션 범위 안에서만 합산
+                    if start_time >= join_time and end_time <= leave_time:
+                        stream_minutes += safe_int(row["화면공유시간(분)"])
+                        stream_exp += safe_int(row["지급 EXP"])
 
-                    # 📢 기본 채널 알림 (5분 뒤 자동 삭제, 멘션 ❌)
-                    if member.guild.system_channel:
-                        await member.guild.system_channel.send(
-                            f"🎧 {member.name} 님이 음성채널 {minutes}분, "
-                            f"화면공유 {session['stream_total']}분 참여 → +{total_exp} exp",
-                            delete_after=300
-                        )
+            total_exp = voice_exp + stream_exp
+
+            # 💾 메인 시트 경험치 갱신
+            main_sheet = sheet.sheet1
+            records = main_sheet.get_all_records()
+            for idx, row in enumerate(records, start=2):
+                if str(row.get("유저 ID")) == user_id:
+                    new_exp = safe_int(row.get("현재레벨경험치", 0)) + total_exp
+                    main_sheet.update_cell(idx, 11, new_exp)  # K열
+                    break
+
+            # 📢 기본 채널 알림
+            if member.guild.system_channel:
+                await member.guild.system_channel.send(
+                    f"🎧 {user_name} 님이 음성채널 {minutes}분, "
+                    f"화면공유 {stream_minutes}분 참여 → +{total_exp} exp",
+                    delete_after=300
+                )
 
 async def setup(bot):
     await bot.add_cog(VoiceExp(bot))
