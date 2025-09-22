@@ -118,7 +118,7 @@ class SettleSelect(discord.ui.Select):
         winners = []
         for idx, row in enumerate(records, start=2):
             if row["도박 ID"] == self.gamble_id:
-                total_bet += safe_int(row["베팅 EXP"])
+                total_bet += safe_int(row.get("베팅 EXP", 0))
                 if row["선택지"] == answer:
                     winners.append((idx, row))
 
@@ -126,14 +126,17 @@ class SettleSelect(discord.ui.Select):
             await interaction.response.send_message("❌ 정답자가 없습니다! (상금 몰수)", ephemeral=True)
             return
 
-        total_winner_bet = sum(safe_int(row["베팅 EXP"]) for _, row in winners)
+        total_winner_bet = sum(safe_int(row.get("베팅 EXP", 0)) for _, row in winners)
 
         # 비례 배분
         winner_texts = []
         for idx, row in winners:
-            bet_amount = safe_int(row["베팅 EXP"])
-            share = int(total_bet * (bet_amount / total_winner_bet))
-            ws.update(f"F{idx}:G{idx}", [["O", share]])
+            bet_amount = safe_int(row.get("베팅 EXP", 0))
+            share = int(total_bet * (bet_amount / total_winner_bet)) if total_winner_bet > 0 else 0
+
+            # ✅ 시트 기록 안정화
+            ws.update_cell(idx, 6, "O")      # 정답 여부
+            ws.update_cell(idx, 7, share)    # 지급 EXP
 
             winner_texts.append(f"- {row['닉네임']} (+{share} EXP)")
 
@@ -248,4 +251,3 @@ class Gamble(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(Gamble(bot))
-
