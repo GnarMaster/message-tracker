@@ -6,6 +6,9 @@ import asyncio
 import os
 from utils import get_sheet, safe_int
 
+# 관리자 채널 ID (Render 환경변수에 설정)
+ADMIN_CHANNEL_ID = int(os.getenv("ADMIN_CHANNEL_ID", 0))
+
 
 # ✅ 베팅 금액 입력 Modal
 class BetAmountModal(discord.ui.Modal, title="베팅 금액 입력"):
@@ -21,20 +24,24 @@ class BetAmountModal(discord.ui.Modal, title="베팅 금액 입력"):
         self.add_item(self.amount)
 
     async def on_submit(self, interaction: discord.Interaction):
+        user_id = str(interaction.user.id)
+        username = interaction.user.name
+        sheet = get_sheet().spreadsheet
+
         await interaction.response.defer(ephemeral=True)
         try:
-            user_id = str(interaction.user.id)
-            username = interaction.user.name
-            sheet = get_sheet().spreadsheet
-
+            # 시트 준비
             try:
                 ws = sheet.worksheet("Gamble_Log")
             except:
                 ws = sheet.add_worksheet(title="Gamble_Log", rows=1000, cols=7)
-                ws.append_row(["도박 ID","유저 ID","닉네임","선택지","베팅 EXP","정답여부","지급 EXP"])
+                ws.append_row(
+                    ["도박 ID", "유저 ID", "닉네임", "선택지", "베팅 EXP", "정답여부", "지급 EXP"]
+                )
 
             records = ws.get_all_records()
 
+            # 이미 참여했으면 무시
             for row in records:
                 if row["도박 ID"] == self.gamble_id and str(row["유저 ID"]) == user_id:
                     await interaction.followup.send("❌ 이미 베팅에 참여했습니다.", ephemeral=True)
@@ -103,10 +110,13 @@ class CloseButton(discord.ui.Button):
                 view=self.view_ref
             )
         if self.view_ref.admin_message:
-            await self.view_ref.admin_message.edit(
-                content=f"🎲 도박 마감 (관리자용) 🎲\n도박 ID: {self.gamble_id}\n⏰ 베팅이 종료되었습니다.",
-                view=self.view_ref
-            )
+            try:
+                await self.view_ref.admin_message.edit(
+                    content=f"🎲 도박 마감 (관리자용) 🎲\n도박 ID: {self.gamble_id}\n⏰ 베팅이 종료되었습니다.",
+                    view=self.view_ref
+                )
+            except:
+                pass
 
 
 # ✅ 정산 Select
@@ -134,32 +144,51 @@ class SettleSelect(discord.ui.Select):
                         winners.append((idx, row))
 
             if not winners:
-                await interaction.channel.send(f"❌ 정답자가 없습니다! (총 {total_bet} EXP 몰수)")
-                if self.parent_view.message:
-                    await self.parent_view.message.delete()
-                if self.parent_view.admin_message:
-                    await self.parent_view.admin_message.delete()
+                await interaction.channel.send("❌ 정답자가 없습니다! (상금 몰수)")
+                try:
+                    if self.parent_view.message:
+                        await self.parent_view.message.delete()
+                    if self.parent_view.admin_message:
+                        await self.parent_view.admin_message.delete()
+                except:
+                    pass
                 return
 
             total_winner_bet = sum(safe_int(row.get("베팅 EXP", 0)) for _, row in winners)
             winner_texts = []
 
-            # ✅ 모든 참가자 처리 (정답자 O / 오답자 X)
-            for idx, row in enumerate(records, start=2):
-                if row["도박 ID"] != self.gamble_id:
-                    continue
-
+            # ✅ 정답자가 1명일 경우 → 베팅 금액의 2배 지급
+            if len(winners) == 1:
+                idx, row = winners[0]
                 bet_amount = safe_int(row.get("베팅 EXP", 0))
-                user_id = str(row["유저 ID"])
+                share = bet_amount * 2
 
-                if str(row.get("선택지", "")).strip() == str(answer).strip():
-                    # 정답자 → 배분
+                await asyncio.to_thread(ws.update_cell, idx, 6, "O")
+                await asyncio.to_thread(ws.update_cell, idx, 7, share)
+
+                winner_texts.append(f"- {row['닉네임']} (+{share} EXP)")
+
+                user_id = str(row["유저 ID"])
+                main_sheet = sheet.sheet1
+                main_records = main_sheet.get_all_records()
+                for midx, mrow in enumerate(main_records, start=2):
+                    if str(mrow.get("유저 ID")) == user_id:
+                        new_exp = safe_int(mrow.get("현재레벨경험치", 0)) + share
+                        await asyncio.to_thread(main_sheet.update_cell, midx, 11, new_exp)
+                        break
+
+            else:
+                # ✅ 정답자가 2명 이상일 경우 → 비례 배분
+                for idx, row in winners:
+                    bet_amount = safe_int(row.get("베팅 EXP", 0))
                     share = int(total_bet * (bet_amount / total_winner_bet)) if total_winner_bet > 0 else 0
+
                     await asyncio.to_thread(ws.update_cell, idx, 6, "O")
                     await asyncio.to_thread(ws.update_cell, idx, 7, share)
+
                     winner_texts.append(f"- {row['닉네임']} (+{share} EXP)")
 
-                    # 메인 시트 EXP 지급
+                    user_id = str(row["유저 ID"])
                     main_sheet = sheet.sheet1
                     main_records = main_sheet.get_all_records()
                     for midx, mrow in enumerate(main_records, start=2):
@@ -167,10 +196,6 @@ class SettleSelect(discord.ui.Select):
                             new_exp = safe_int(mrow.get("현재레벨경험치", 0)) + share
                             await asyncio.to_thread(main_sheet.update_cell, midx, 11, new_exp)
                             break
-                else:
-                    # 오답자 → X 처리, 지급 0
-                    await asyncio.to_thread(ws.update_cell, idx, 6, "X")
-                    await asyncio.to_thread(ws.update_cell, idx, 7, 0)
 
             winners_text = "\n".join(winner_texts)
 
@@ -181,11 +206,13 @@ class SettleSelect(discord.ui.Select):
                 f"분배 결과:\n{winners_text}"
             )
 
-            # ✅ 임베드 삭제
-            if self.parent_view.message:
-                await self.parent_view.message.delete()
-            if self.parent_view.admin_message:
-                await self.parent_view.admin_message.delete()
+            try:
+                if self.parent_view.message:
+                    await self.parent_view.message.delete()
+                if self.parent_view.admin_message:
+                    await self.parent_view.admin_message.delete()
+            except:
+                pass
 
         except Exception as e:
             await interaction.followup.send(f"⚠️ 정산 오류 발생: {e}", ephemeral=True)
@@ -250,10 +277,8 @@ class Gamble(commands.Cog):
         선택지7: str = None,
         선택지8: str = None
     ):
-        await interaction.response.defer(ephemeral=True)
-
         if not interaction.user.guild_permissions.administrator:
-            await interaction.followup.send("❌ 관리자만 가능합니다.", ephemeral=True)
+            await interaction.response.send_message("❌ 관리자만 가능합니다.", ephemeral=True)
             return
 
         options = [opt for opt in [
@@ -262,7 +287,7 @@ class Gamble(commands.Cog):
         ] if opt]
 
         if len(options) < 2:
-            await interaction.followup.send("❌ 최소 2개 이상의 선택지가 필요합니다.", ephemeral=True)
+            await interaction.response.send_message("❌ 최소 2개 이상의 선택지가 필요합니다.", ephemeral=True)
             return
 
         gamble_id = f"GAMBLE_{uuid.uuid4().hex[:8]}"
@@ -278,15 +303,17 @@ class Gamble(commands.Cog):
         view.message = message
 
         # 관리자 채널에도 복사
-        admin_channel_id = int(os.getenv("ADMIN_CHANNEL_ID", 0))
         admin_msg = None
-        if admin_channel_id:
-            admin_channel = interaction.guild.get_channel(admin_channel_id)
+        if ADMIN_CHANNEL_ID:
+            admin_channel = interaction.guild.get_channel(ADMIN_CHANNEL_ID)
             if admin_channel:
-                admin_msg = await admin_channel.send(embed=embed, view=view)
+                try:
+                    admin_msg = await admin_channel.send(embed=embed, view=view)
+                except Exception as e:
+                    print(f"❗ 관리자 채널 전송 실패: {e}")
         view.admin_message = admin_msg
 
-        await interaction.followup.send("✅ 도박을 시작했습니다.", ephemeral=True)
+        await interaction.response.send_message("✅ 도박을 시작했습니다.", ephemeral=True)
 
 
 async def setup(bot):
