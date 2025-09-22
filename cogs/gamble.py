@@ -171,12 +171,30 @@ class Gamble(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="도박시작", description="도박을 시작합니다 (관리자 전용)")
-    async def start_gamble(self, interaction: discord.Interaction, 주제: str, *선택지: str):
+    @app_commands.command(name="도박시작", description="도박을 시작합니다 (관리자 전용, 선택지 최대 8개)")
+    async def start_gamble(
+        self,
+        interaction: discord.Interaction,
+        주제: str,
+        선택지1: str,
+        선택지2: str,
+        선택지3: str = None,
+        선택지4: str = None,
+        선택지5: str = None,
+        선택지6: str = None,
+        선택지7: str = None,
+        선택지8: str = None
+    ):
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("❌ 관리자만 가능합니다.", ephemeral=True)
             return
-        if len(선택지) < 2:
+
+        options = [opt for opt in [
+            선택지1, 선택지2, 선택지3, 선택지4,
+            선택지5, 선택지6, 선택지7, 선택지8
+        ] if opt]
+
+        if len(options) < 2:
             await interaction.response.send_message("❌ 최소 2개 이상의 선택지가 필요합니다.", ephemeral=True)
             return
 
@@ -186,7 +204,7 @@ class Gamble(commands.Cog):
             description=f"주제: {주제}\n베팅 금액: 100 EXP",
             color=discord.Color.gold()
         )
-        view = GambleView(gamble_id, 주제, 선택지, str(interaction.user.id))
+        view = GambleView(gamble_id, 주제, options, str(interaction.user.id))
         message = await interaction.channel.send(embed=embed, view=view)
         view.message = message
         await interaction.response.send_message("✅ 도박을 시작했습니다.", ephemeral=True)
