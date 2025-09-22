@@ -56,9 +56,9 @@ class Bomb(commands.Cog):
 
     @app_commands.command(
         name="폭탄",
-        description="특수 전용 스킬: 랜덤 유저에게 폭탄을 던집니다. (쿨타임 4시간)"
+        description="특수 전용 스킬: 랜덤 또는 (축제광은) 지정 + 랜덤 폭죽 (쿨타임 4시간)"
     )
-    async def 폭탄(self, interaction: discord.Interaction):
+    async def 폭탄(self, interaction: discord.Interaction, target: discord.Member = None):
         user_id = str(interaction.user.id)
         username = interaction.user.name
 
@@ -89,7 +89,7 @@ class Bomb(commands.Cog):
             await interaction.followup.send("⚠️ 당신의 데이터가 없습니다.")
             return
         if not candidates:
-            await interaction.followup.send("⚠️ 폭탄을 맞을 대상(레벨 2 이상 유저)이 없습니다.")
+            await interaction.followup.send("⚠️ 폭탄을 맞을 대상(레벨 5 이상 유저)이 없습니다.")
             return
 
         user_idx, user_data = user_row
@@ -109,11 +109,19 @@ class Bomb(commands.Cog):
                 return
             prefix_msg = f"💣 {username} 님이 폭탄을 던졌습니다!\n"
 
-        # 랜덤 대상 선정
-        target_idx, target_data = random.choice(candidates)
-        target_id = str(target_data.get("유저 ID"))
-        target_name = target_data.get("닉네임", f"ID:{target_id}")
+        # 🎯 타겟 결정 (축제광은 지정 허용)
+        if job == "축제광" and target:
+            target_id = str(target.id)
+            target_row = next(((i, r) for i, r in enumerate(records, start=2) if str(r.get("유저 ID")) == target_id), None)
+            if not target_row:
+                await interaction.followup.send("⚠️ 대상 유저의 데이터가 없습니다.")
+                return
+            target_idx, target_data = target_row
+        else:
+            target_idx, target_data = random.choice(candidates)
+            target_id = str(target_data.get("유저 ID"))
 
+        target_name = target_data.get("닉네임", f"ID:{target_id}")
         level = safe_int(user_data.get("레벨",1))
         damage, dmg_type = self.get_bomb_damage(level)
 
@@ -138,10 +146,9 @@ class Bomb(commands.Cog):
                     "폭탄",
                     f"반격 발동! 자신이 -{damage} exp"
                 )
-
                 result_msg = (
                     prefix_msg +
-                    f"🎯 랜덤 타겟: <@{target_id}> → 0 피해 (반격 발동!)\n" +
+                    f"🎯 타겟: <@{target_id}> → 0 피해 (반격 발동!)\n" +
                     counter_msg +
                     f"\n💥 {username} 님이 반격으로 {damage} 피해를 입었습니다!"
                 )
@@ -168,7 +175,7 @@ class Bomb(commands.Cog):
 
                 result_msg = (
                     prefix_msg +
-                    f"{effect} 랜덤 타겟: <@{target_id}> → -{damage} exp (현재 경험치: {new_target_exp})"
+                    f"{effect} 타겟: <@{target_id}> → -{damage} exp (현재 경험치: {new_target_exp})"
                 )
                 
                 # =============================
@@ -181,20 +188,24 @@ class Bomb(commands.Cog):
                     result_msg += f"\n💥 파괴광의 힘! 추가 피해 {boosted} 적용!"
 
                 elif job == "축제광":
-                    extra_targets = random.sample(candidates, k=min(len(candidates), random.randint(1, 5)))
+                    extras = [c for c in candidates if str(c[1].get("유저 ID")) != target_id]
+                    extra_targets = random.sample(extras, k=min(len(extras), random.randint(1, 5))) if extras else []
                     for rand_idx, rand_data in extra_targets:
                         delta = random.randint(-20, 20)
                         rand_new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) + delta
                         sheet.update_cell(rand_idx, 11, rand_new_exp)
                         nickname = rand_data.get("닉네임", "???")
                         if delta < 0:
-                            result_msg += f"\n🎉 {nickname} → -{abs(delta)} exp (폭죽 맞음!)"
+                            result_msg += f"\n💥 {nickname} → -{abs(delta)} exp (폭죽 맞음!)"
                         else:
                             result_msg += f"\n🎉 {nickname} → +{delta} exp (행운의 선물!)"
+
                 elif job == "미치광이":
-                   pass
-                # ✅ 결과 메시지는 항상 출력
-                await interaction.followup.send(result_msg)
+                    # TODO: 광란 버프랑 연동할 수 있음
+                    pass
+
+            # ✅ 결과 메시지는 항상 출력
+            await interaction.followup.send(result_msg)
 
 
 async def setup(bot):
