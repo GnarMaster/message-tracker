@@ -5,18 +5,25 @@ import uuid
 from utils import get_sheet, safe_int
 
 
-class GambleButton(discord.ui.Button):
-    def __init__(self, label, gamble_id):
-        super().__init__(label=label, style=discord.ButtonStyle.primary)
+# ✅ 베팅 금액 입력 Modal
+class BetAmountModal(discord.ui.Modal, title="베팅 금액 입력"):
+    def __init__(self, gamble_id, option):
+        super().__init__()
         self.gamble_id = gamble_id
-        self.option = label
+        self.option = option
+        self.amount = discord.ui.TextInput(
+            label="베팅 금액 (1~100)",
+            placeholder="숫자만 입력",
+            required=True
+        )
+        self.add_item(self.amount)
 
-    async def callback(self, interaction: discord.Interaction):
+    async def on_submit(self, interaction: discord.Interaction):
         user_id = str(interaction.user.id)
         username = interaction.user.name
         sheet = get_sheet().spreadsheet
 
-        # Gamble_Log 시트 준비
+        # 시트 준비
         try:
             ws = sheet.worksheet("Gamble_Log")
         except:
@@ -25,24 +32,47 @@ class GambleButton(discord.ui.Button):
 
         records = ws.get_all_records()
 
-        # 이미 참여했는지 확인 → 아무 반응 없이 무시
+        # 이미 참여했으면 무시
         for row in records:
             if row["도박 ID"] == self.gamble_id and str(row["유저 ID"]) == user_id:
+                await interaction.response.send_message("❌ 이미 베팅에 참여했습니다.", ephemeral=True)
                 return
 
-        # EXP -100 차감 (메인 시트)
+        amount = safe_int(self.amount.value)
+        if amount <= 0 or amount > 100:
+            await interaction.response.send_message("❌ 베팅 금액은 1~100 사이여야 합니다.", ephemeral=True)
+            return
+
+        # EXP 차감
         main_sheet = sheet.sheet1
         main_records = main_sheet.get_all_records()
         for idx, row in enumerate(main_records, start=2):
             if str(row.get("유저 ID")) == user_id:
-                new_exp = safe_int(row.get("현재레벨경험치", 0)) - 100
+                new_exp = safe_int(row.get("현재레벨경험치", 0)) - amount
                 main_sheet.update_cell(idx, 11, new_exp)  # K열
                 break
 
-        # Gamble_Log 기록
-        ws.append_row([self.gamble_id, user_id, username, self.option, 100, "", ""])
+        # 기록
+        ws.append_row([self.gamble_id, user_id, username, self.option, amount, "", ""])
+
+        await interaction.response.send_message(
+            f"✅ {amount} EXP 베팅 완료! ({self.option})",
+            ephemeral=True
+        )
 
 
+# ✅ 베팅 버튼
+class GambleButton(discord.ui.Button):
+    def __init__(self, label, gamble_id):
+        super().__init__(label=label, style=discord.ButtonStyle.primary)
+        self.gamble_id = gamble_id
+        self.option = label
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_modal(BetAmountModal(self.gamble_id, self.option))
+
+
+# ✅ 마감 버튼
 class CloseButton(discord.ui.Button):
     def __init__(self, gamble_id, host_id, view):
         super().__init__(label="⏹️ 마감하기", style=discord.ButtonStyle.danger)
@@ -55,11 +85,9 @@ class CloseButton(discord.ui.Button):
             await interaction.response.send_message("❌ 마감 권한이 없습니다.", ephemeral=True)
             return
 
-        # 선택지 버튼 비활성화
         for child in self.view_ref.children:
             if isinstance(child, GambleButton):
                 child.disabled = True
-        # 정산 버튼 활성화
         for child in self.view_ref.children:
             if isinstance(child, SettleButton):
                 child.disabled = False
@@ -69,8 +97,10 @@ class CloseButton(discord.ui.Button):
             content=f"🎲 도박 마감 🎲\n도박 ID: {self.gamble_id}\n⏰ 베팅이 종료되었습니다.",
             view=self.view_ref
         )
+        await interaction.response.defer(ephemeral=True)
 
 
+# ✅ 정산 Select
 class SettleSelect(discord.ui.Select):
     def __init__(self, gamble_id, options, parent_view):
         self.gamble_id = gamble_id
@@ -96,13 +126,16 @@ class SettleSelect(discord.ui.Select):
             await interaction.response.send_message("❌ 정답자가 없습니다! (상금 몰수)", ephemeral=True)
             return
 
-        prize = total_bet // len(winners)
+        total_winner_bet = sum(safe_int(row["베팅 EXP"]) for _, row in winners)
 
-        # 정산 처리
-        winner_names = []
+        # 비례 배분
+        winner_texts = []
         for idx, row in winners:
-            ws.update(f"F{idx}:G{idx}", [["O", prize]])
-            winner_names.append(row["닉네임"])
+            bet_amount = safe_int(row["베팅 EXP"])
+            share = int(total_bet * (bet_amount / total_winner_bet))
+            ws.update(f"F{idx}:G{idx}", [["O", share]])
+
+            winner_texts.append(f"- {row['닉네임']} (+{share} EXP)")
 
             # 메인 시트 EXP 지급
             user_id = str(row["유저 ID"])
@@ -110,27 +143,28 @@ class SettleSelect(discord.ui.Select):
             main_records = main_sheet.get_all_records()
             for midx, mrow in enumerate(main_records, start=2):
                 if str(mrow.get("유저 ID")) == user_id:
-                    new_exp = safe_int(mrow.get("현재레벨경험치", 0)) + prize
+                    new_exp = safe_int(mrow.get("현재레벨경험치", 0)) + share
                     main_sheet.update_cell(midx, 11, new_exp)
                     break
 
-        winners_text = "\n".join([f"- {name}" for name in winner_names])
+        winners_text = "\n".join(winner_texts)
 
-        # 정산 결과 공개 메시지
         await interaction.channel.send(
             f"✅ 정산 완료!\n"
             f"정답: {answer}\n"
             f"총 상금: {total_bet} exp\n"
-            f"당첨자({len(winners)}명, 1인당 {prize} exp):\n{winners_text}"
+            f"분배 결과:\n{winners_text}"
         )
 
-        # 투표 임베드 삭제
         try:
             await self.parent_view.message.delete()
         except:
             pass
 
+        await interaction.response.defer(ephemeral=True)
 
+
+# ✅ 정산 버튼
 class SettleButton(discord.ui.Button):
     def __init__(self, gamble_id, host_id, options, parent_view):
         super().__init__(label="⚖️ 정산하기", style=discord.ButtonStyle.success, disabled=True)
@@ -149,6 +183,7 @@ class SettleButton(discord.ui.Button):
         await interaction.response.send_message("⚖️ 정답을 선택하세요:", view=view, ephemeral=True)
 
 
+# ✅ View
 class GambleView(discord.ui.View):
     def __init__(self, gamble_id, topic, options, host_id):
         super().__init__(timeout=None)
@@ -167,6 +202,7 @@ class GambleView(discord.ui.View):
         self.message = None
 
 
+# ✅ Cog
 class Gamble(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -201,7 +237,7 @@ class Gamble(commands.Cog):
         gamble_id = f"GAMBLE_{uuid.uuid4().hex[:8]}"
         embed = discord.Embed(
             title="🎲 도박 시작 🎲",
-            description=f"주제: {주제}\n베팅 금액: 100 EXP",
+            description=f"주제: {주제}\n베팅 금액: 자유 (최대 100 EXP)",
             color=discord.Color.gold()
         )
         view = GambleView(gamble_id, 주제, options, str(interaction.user.id))
@@ -212,3 +248,4 @@ class Gamble(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(Gamble(bot))
+
