@@ -134,37 +134,43 @@ class SettleSelect(discord.ui.Select):
                         winners.append((idx, row))
 
             if not winners:
-                await interaction.channel.send("❌ 정답자가 없습니다! (상금 몰수)")
-                # ✅ 임베드 삭제 (일반/관리자 채널 모두)
-                try:
-                    if self.parent_view.message:
-                        await self.parent_view.message.delete()
-                    if self.parent_view.admin_message:
-                        await self.parent_view.admin_message.delete()
-                except:
-                    pass
+                await interaction.channel.send(f"❌ 정답자가 없습니다! (총 {total_bet} EXP 몰수)")
+                if self.parent_view.message:
+                    await self.parent_view.message.delete()
+                if self.parent_view.admin_message:
+                    await self.parent_view.admin_message.delete()
                 return
 
             total_winner_bet = sum(safe_int(row.get("베팅 EXP", 0)) for _, row in winners)
-
             winner_texts = []
-            for idx, row in winners:
+
+            # ✅ 모든 참가자 처리 (정답자 O / 오답자 X)
+            for idx, row in enumerate(records, start=2):
+                if row["도박 ID"] != self.gamble_id:
+                    continue
+
                 bet_amount = safe_int(row.get("베팅 EXP", 0))
-                share = int(total_bet * (bet_amount / total_winner_bet)) if total_winner_bet > 0 else 0
-
-                await asyncio.to_thread(ws.update_cell, idx, 6, "O")
-                await asyncio.to_thread(ws.update_cell, idx, 7, share)
-
-                winner_texts.append(f"- {row['닉네임']} (+{share} EXP)")
-
                 user_id = str(row["유저 ID"])
-                main_sheet = sheet.sheet1
-                main_records = main_sheet.get_all_records()
-                for midx, mrow in enumerate(main_records, start=2):
-                    if str(mrow.get("유저 ID")) == user_id:
-                        new_exp = safe_int(mrow.get("현재레벨경험치", 0)) + share
-                        await asyncio.to_thread(main_sheet.update_cell, midx, 11, new_exp)
-                        break
+
+                if str(row.get("선택지", "")).strip() == str(answer).strip():
+                    # 정답자 → 배분
+                    share = int(total_bet * (bet_amount / total_winner_bet)) if total_winner_bet > 0 else 0
+                    await asyncio.to_thread(ws.update_cell, idx, 6, "O")
+                    await asyncio.to_thread(ws.update_cell, idx, 7, share)
+                    winner_texts.append(f"- {row['닉네임']} (+{share} EXP)")
+
+                    # 메인 시트 EXP 지급
+                    main_sheet = sheet.sheet1
+                    main_records = main_sheet.get_all_records()
+                    for midx, mrow in enumerate(main_records, start=2):
+                        if str(mrow.get("유저 ID")) == user_id:
+                            new_exp = safe_int(mrow.get("현재레벨경험치", 0)) + share
+                            await asyncio.to_thread(main_sheet.update_cell, midx, 11, new_exp)
+                            break
+                else:
+                    # 오답자 → X 처리, 지급 0
+                    await asyncio.to_thread(ws.update_cell, idx, 6, "X")
+                    await asyncio.to_thread(ws.update_cell, idx, 7, 0)
 
             winners_text = "\n".join(winner_texts)
 
@@ -175,13 +181,11 @@ class SettleSelect(discord.ui.Select):
                 f"분배 결과:\n{winners_text}"
             )
 
-            try:
-                if self.parent_view.message:
-                    await self.parent_view.message.delete()
-                if self.parent_view.admin_message:
-                    await self.parent_view.admin_message.delete()
-            except:
-                pass
+            # ✅ 임베드 삭제
+            if self.parent_view.message:
+                await self.parent_view.message.delete()
+            if self.parent_view.admin_message:
+                await self.parent_view.admin_message.delete()
 
         except Exception as e:
             await interaction.followup.send(f"⚠️ 정산 오류 발생: {e}", ephemeral=True)
