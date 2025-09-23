@@ -239,10 +239,11 @@ async def sync_cache_to_sheet():
                 current_nickname = str(row.get("닉네임", "")).strip()
                 current_level = safe_int(row.get("레벨", 1))
                 current_inlevel_exp = safe_float(row.get("현재레벨경험치", 0))
+                current_gold = safe_int(row.get("골드",0))
                 # 유효한 user_id_from_sheet 일 때만 저장
                 if user_id_from_sheet:
                     existing_data[user_id_from_sheet] = (
-                        idx, total_messages, current_nickname, mentions, links, images, reels, current_level, current_inlevel_exp)
+                        idx, total_messages, current_nickname, mentions, links, images, reels, current_level, current_inlevel_exp, current_gold)
             except Exception as e:
                 print(
                     f"❗ Google 시트 레코드 처리 중 오류 발생 (ID: {user_id_from_sheet}, 행: {idx}): {e}")
@@ -288,7 +289,7 @@ async def sync_cache_to_sheet():
 
             if user_id in existing_data:
                 # 기존 사용자 데이터 업데이트
-                row_num, current_total_messages, current_nickname_from_sheet, current_mentions, current_links, current_images, current_reels, current_level, current_inlevel_exp = existing_data[
+                row_num, current_total_messages, current_nickname_from_sheet, current_mentions, current_links, current_images, current_reels, current_level, current_inlevel_exp, current_gold = existing_data[
                     user_id]
 
                 # 닉네임 변경 시 업데이트 목록에 추가
@@ -352,7 +353,8 @@ async def sync_cache_to_sheet():
                     reels_from_cache,  # 릴스 데이터
                     level,
                     inlevel_exp,
-                    "백수"
+                    "백수",
+                    0
                 ])
 
             # 처리된 캐시 키를 삭제 목록에 추가
