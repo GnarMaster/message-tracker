@@ -47,7 +47,7 @@ class Bomb(commands.Cog):
             return random.randint(45, 60) + level, "medium"
         elif roll <= 99: # 9%
             sub_roll = random.uniform(0,100)
-            if sub_roll <=1:
+            if sub_roll <= 1:
                 return 300 + level, "LEGEND"
             else: 
                 return random.randint(80, 100) + level, "critical"
@@ -62,151 +62,158 @@ class Bomb(commands.Cog):
         user_id = str(interaction.user.id)
         username = interaction.user.name
 
-        await interaction.response.defer(ephemeral=False)
+        # ✅ 첫 응답은 비공개 defer
+        await interaction.response.defer(ephemeral=True)
 
-        # 쿨타임 확인
-        last_used = self.get_last_skill_time(user_id, "폭탄")
-        if last_used and datetime.now() < last_used + timedelta(hours=4):
-            remain = (last_used + timedelta(hours=4)) - datetime.now()
-            minutes = remain.seconds // 60
-            await interaction.followup.send(f"⏳ 아직 쿨타임입니다! {minutes}분 뒤에 다시 시도하세요.", ephemeral=True)
-            return
-
-        sheet = get_sheet()
-        records = sheet.get_all_records()
-
-        user_row = None
-        candidates = []
-
-        for idx, row in enumerate(records, start=2):
-            if str(row.get("유저 ID", "")) == user_id:
-                user_row = (idx, row)
-            else:
-                if safe_int(row.get("레벨", 1)) >= 5:
-                    candidates.append((idx, row))
-
-        if not user_row:
-            await interaction.followup.send("⚠️ 당신의 데이터가 없습니다.")
-            return
-        if not candidates:
-            await interaction.followup.send("⚠️ 폭탄을 맞을 대상(레벨 5 이상 유저)이 없습니다.")
-            return
-
-        user_idx, user_data = user_row
-        job = user_data.get("직업", "백수")
-
-        # ✅ 카피닌자 분기
-        if job == "카피닌자":
-            copied_skill = get_copied_skill(user_id)
-            if copied_skill != "폭탄":
-                await interaction.followup.send("❌ 현재 복사한 스킬이 폭탄이 아닙니다.", ephemeral=True)
-                return
-            clear_copied_skill(user_id)
-            prefix_msg = f"💀 카피닌자 {interaction.user.name}님이 복사한 스킬 **폭탄**을 발동!\n"
-        else:
-            if job not in ["특수","파괴광","축제광","미치광이"]:
-                await interaction.followup.send("❌ 특수 직업만 사용할 수 있는 스킬입니다!")
-                return
-            prefix_msg = f"💣 {username} 님이 폭탄을 던졌습니다!\n"
-
-        # 🎯 타겟 결정 (축제광은 지정 허용)
-        if job == "축제광" and target:
-            target_id = str(target.id)
-            target_row = next(((i, r) for i, r in enumerate(records, start=2) if str(r.get("유저 ID")) == target_id), None)
-            if not target_row:
-                await interaction.followup.send("⚠️ 대상 유저의 데이터가 없습니다.")
-                return
-            target_idx, target_data = target_row
-        else:
-            target_idx, target_data = random.choice(candidates)
-            target_id = str(target_data.get("유저 ID"))
-
-        target_name = target_data.get("닉네임", f"ID:{target_id}")
-        level = safe_int(user_data.get("레벨",1))
-        damage, dmg_type = self.get_bomb_damage(level)
-
-        if dmg_type == "self":
-            # ✅ 자폭은 반격 무시
-            new_user_exp = safe_int(user_data.get("현재레벨경험치", 0)) + damage
-            sheet.update_cell(user_idx, 11, new_user_exp)
-
-            self.log_skill_use(user_id, username, "폭탄", f"자폭 -40 exp")
-            await interaction.followup.send(
-                prefix_msg + f"☠️ 스스로 -40 exp (현재 경험치: {new_user_exp})"
-            )
-            return
-        else:
-            # ✅ 반격 체크 먼저
-            counter_msg = check_counter(user_id, username, target_id, f"<@{target_id}>", damage)
-
-            if counter_msg:
-                self.log_skill_use(
-                    user_id,
-                    username,
-                    "폭탄",
-                    f"반격 발동! 자신이 -{damage} exp"
+        try:
+            # 쿨타임 확인
+            last_used = self.get_last_skill_time(user_id, "폭탄")
+            if last_used and datetime.now() < last_used + timedelta(hours=4):
+                remain = (last_used + timedelta(hours=4)) - datetime.now()
+                minutes = remain.seconds // 60
+                await interaction.edit_original_response(
+                    content=f"⏳ 아직 쿨타임입니다! {minutes}분 뒤에 다시 시도하세요."
                 )
-                result_msg = (
-                    prefix_msg +
-                    f"🎯 타겟: <@{target_id}> → 0 피해 (반격 발동!)\n" +
-                    counter_msg +
-                    f"\n💥 {username} 님이 반격으로 {damage} 피해를 입었습니다!"
-                )
-            else:
-                # 반격 없음 → 정상 피해
-                new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - damage
-                sheet.update_cell(target_idx, 11, new_target_exp)
+                return
 
-                self.log_skill_use(
-                    user_id,
-                    username,
-                    "폭탄",
-                    f"대상: {target_name}, -{damage} exp"
-                )
+            sheet = get_sheet()
+            records = sheet.get_all_records()
 
-                if dmg_type == "normal":
-                    effect = "🎯"
-                elif dmg_type == "medium":
-                    effect = "💥"
-                elif dmg_type == "LEGEND":
-                    effect = "⚡레전드상황발생⚡"
+            user_row = None
+            candidates = []
+
+            for idx, row in enumerate(records, start=2):
+                if str(row.get("유저 ID", "")) == user_id:
+                    user_row = (idx, row)
                 else:
-                    effect = "🔥 치명적!"
+                    if safe_int(row.get("레벨", 1)) >= 5:
+                        candidates.append((idx, row))
 
-                result_msg = (
-                    prefix_msg +
-                    f"{effect} 타겟: <@{target_id}> → -{damage} exp (현재 경험치: {new_target_exp})"
-                )
-                
-                # =============================
-                # 🔹 2차 전직 추가 효과
-                # =============================
-                if job == "파괴광":
-                    boosted = int(damage * 0.5)  # 추가 50% 피해
-                    new_target_exp -= boosted
+            if not user_row:
+                await interaction.edit_original_response(content="⚠️ 당신의 데이터가 없습니다.")
+                return
+            if not candidates:
+                await interaction.edit_original_response(content="⚠️ 폭탄을 맞을 대상(레벨 5 이상 유저)이 없습니다.")
+                return
+
+            user_idx, user_data = user_row
+            job = user_data.get("직업", "백수")
+
+            # ✅ 카피닌자 분기
+            if job == "카피닌자":
+                copied_skill = get_copied_skill(user_id)
+                if copied_skill != "폭탄":
+                    await interaction.edit_original_response(content="❌ 현재 복사한 스킬이 폭탄이 아닙니다.")
+                    return
+                clear_copied_skill(user_id)
+                prefix_msg = f"💀 카피닌자 {interaction.user.name}님이 복사한 스킬 **폭탄**을 발동!\n"
+            else:
+                if job not in ["특수","파괴광","축제광","미치광이"]:
+                    await interaction.edit_original_response(content="❌ 특수 직업만 사용할 수 있는 스킬입니다!")
+                    return
+                prefix_msg = f"💣 {username} 님이 폭탄을 던졌습니다!\n"
+
+            # ✅ 성공 → 비공개 응답 삭제
+            await interaction.delete_original_response()
+
+            # 🎯 타겟 결정 (축제광은 지정 허용)
+            if job == "축제광" and target:
+                target_id = str(target.id)
+                target_row = next(((i, r) for i, r in enumerate(records, start=2) if str(r.get("유저 ID")) == target_id), None)
+                if not target_row:
+                    await interaction.followup.send("⚠️ 대상 유저의 데이터가 없습니다.")
+                    return
+                target_idx, target_data = target_row
+            else:
+                target_idx, target_data = random.choice(candidates)
+                target_id = str(target_data.get("유저 ID"))
+
+            target_name = target_data.get("닉네임", f"ID:{target_id}")
+            level = safe_int(user_data.get("레벨",1))
+            damage, dmg_type = self.get_bomb_damage(level)
+
+            if dmg_type == "self":
+                # ✅ 자폭은 반격 무시
+                new_user_exp = safe_int(user_data.get("현재레벨경험치", 0)) + damage
+                sheet.update_cell(user_idx, 11, new_user_exp)
+
+                self.log_skill_use(user_id, username, "폭탄", f"자폭 -40 exp")
+                result_msg = prefix_msg + f"☠️ 스스로 -40 exp (현재 경험치: {new_user_exp})"
+            else:
+                # ✅ 반격 체크 먼저
+                counter_msg = check_counter(user_id, username, target_id, f"<@{target_id}>", damage)
+
+                if counter_msg:
+                    self.log_skill_use(
+                        user_id,
+                        username,
+                        "폭탄",
+                        f"반격 발동! 자신이 -{damage} exp"
+                    )
+                    result_msg = (
+                        prefix_msg +
+                        f"🎯 타겟: <@{target_id}> → 0 피해 (반격 발동!)\n" +
+                        counter_msg +
+                        f"\n💥 {username} 님이 반격으로 {damage} 피해를 입었습니다!"
+                    )
+                else:
+                    # 반격 없음 → 정상 피해
+                    new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - damage
                     sheet.update_cell(target_idx, 11, new_target_exp)
-                    result_msg += f"\n💥 파괴광의 힘! 추가 피해 {boosted} 적용!"
 
-                elif job == "축제광":
-                    extras = [c for c in candidates if str(c[1].get("유저 ID")) != target_id]
-                    extra_targets = random.sample(extras, k=min(len(extras), random.randint(1, 5))) if extras else []
-                    for rand_idx, rand_data in extra_targets:
-                        delta = random.randint(-20, 20)
-                        rand_new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) + delta
-                        sheet.update_cell(rand_idx, 11, rand_new_exp)
-                        nickname = rand_data.get("닉네임", "???")
-                        if delta < 0:
-                            result_msg += f"\n💥 {nickname} → -{abs(delta)} exp (폭죽 맞음!)"
-                        else:
-                            result_msg += f"\n🎉 {nickname} → +{delta} exp (행운의 선물!)"
+                    self.log_skill_use(
+                        user_id,
+                        username,
+                        "폭탄",
+                        f"대상: {target_name}, -{damage} exp"
+                    )
 
-                elif job == "미치광이":
-                    # TODO: 광란 버프랑 연동할 수 있음
-                    pass
+                    if dmg_type == "normal":
+                        effect = "🎯"
+                    elif dmg_type == "medium":
+                        effect = "💥"
+                    elif dmg_type == "LEGEND":
+                        effect = "⚡레전드상황발생⚡"
+                    else:
+                        effect = "🔥 치명적!"
 
-            # ✅ 결과 메시지는 항상 출력
+                    result_msg = (
+                        prefix_msg +
+                        f"{effect} 타겟: <@{target_id}> → -{damage} exp (현재 경험치: {new_target_exp})"
+                    )
+                    
+                    # =============================
+                    # 🔹 2차 전직 추가 효과
+                    # =============================
+                    if job == "파괴광":
+                        boosted = int(damage * 0.5)  # 추가 50% 피해
+                        new_target_exp -= boosted
+                        sheet.update_cell(target_idx, 11, new_target_exp)
+                        result_msg += f"\n💥 파괴광의 힘! 추가 피해 {boosted} 적용!"
+
+                    elif job == "축제광":
+                        extras = [c for c in candidates if str(c[1].get("유저 ID")) != target_id]
+                        extra_targets = random.sample(extras, k=min(len(extras), random.randint(1, 5))) if extras else []
+                        for rand_idx, rand_data in extra_targets:
+                            delta = random.randint(-20, 20)
+                            rand_new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) + delta
+                            sheet.update_cell(rand_idx, 11, rand_new_exp)
+                            nickname = rand_data.get("닉네임", "???")
+                            if delta < 0:
+                                result_msg += f"\n💥 {nickname} → -{abs(delta)} exp (폭죽 맞음!)"
+                            else:
+                                result_msg += f"\n🎉 {nickname} → +{delta} exp (행운의 선물!)"
+
+                    elif job == "미치광이":
+                        # TODO: 광란 버프랑 연동할 수 있음
+                        pass
+
+            # ✅ 결과 메시지는 공개 전송
             await interaction.followup.send(result_msg)
 
+        except Exception as e:
+            # 예외 처리 → 비공개 알림
+            await interaction.edit_original_response(content=f"❌ 오류 발생: {e}")
 
 async def setup(bot):
     await bot.add_cog(Bomb(bot))
