@@ -18,9 +18,10 @@ class GachaButtonView(discord.ui.View):
         user_id = str(interaction.user.id)
         username = interaction.user.name
 
-        await interaction.response.defer(ephemeral=False)
-
         try:
+            # 🔹 먼저 즉시 응답 보내서 타임아웃 방지
+            msg = await interaction.response.send_message("🎰 뽑는 중...", ephemeral=False)
+
             sheet = get_sheet()
             records = sheet.get_all_records()
 
@@ -31,20 +32,21 @@ class GachaButtonView(discord.ui.View):
                     break
 
             if not user_row:
-                await interaction.followup.send("⚠️ 데이터가 없습니다. 먼저 메시지를 쳐서 등록하세요.", ephemeral=True)
+                await msg.edit(content="⚠️ 데이터가 없습니다. 먼저 메시지를 쳐서 등록하세요.")
                 return
 
             row_idx, user_data = user_row
             current_gold = safe_int(user_data.get("골드", 0))
 
             if current_gold < 10:
-                await interaction.followup.send("💰 골드가 부족합니다! (최소 10 필요)", ephemeral=True)
+                await msg.edit(content="💰 골드가 부족합니다! (최소 10 필요)")
                 return
 
             new_gold = current_gold - 10
 
+            # 🔹 보상 및 확률 수정 반영
             rewards = [1, 5, 10, 20, 50, 100]
-            weights = [35, 25, 20, 15, 4, 1]  # 기댓값 10에 맞춘 가중치
+            weights = [30, 30, 20, 15, 4, 1]  # 총합 100 → 기댓값 ≈ 10
             reward = random.choices(rewards, weights=weights, k=1)[0]
 
             new_gold += reward
@@ -60,7 +62,8 @@ class GachaButtonView(discord.ui.View):
             embed.add_field(name="보유 골드", value=f"{new_gold} 골드", inline=False)
             embed.set_footer(text="⏳ 이 메시지는 5분 뒤 자동 삭제됩니다.")
 
-            await interaction.followup.send(embed=embed, delete_after=300)
+            # 🔹 결과로 교체
+            await msg.edit(content=None, embed=embed, view=None, delete_after=300)
 
         except Exception as e:
             print(f"❗ 뽑기 버튼 에러: {e}")
@@ -90,6 +93,18 @@ class GachaButtonCog(commands.Cog):
             description="버튼을 눌러 뽑기를 돌려보세요! (10골드 필요)",
             color=discord.Color.green()
         )
+
+        # 🔹 확률표 추가
+        prob_text = (
+            "1골드 → 30%\n"
+            "5골드 → 30%\n"
+            "10골드 → 20%\n"
+            "20골드 → 15%\n"
+            "50골드 → 4%\n"
+            "100골드 → 1%"
+        )
+        embed.add_field(name="📊 확률표", value=prob_text, inline=False)
+
         view = GachaButtonView(self.bot)
         await interaction.response.send_message(embed=embed, view=view)
         print(f"✅ 뽑기 머신이 채널 {interaction.channel.id} 에 설치됨")
