@@ -14,7 +14,7 @@ class DuelView(discord.ui.View):
         self.amount = amount
         self.sheet = sheet
         self.c_idx, self.c_data = c_idx, c_data
-        self.t_idx, self.c_data = t_idx, t_data
+        self.t_idx, self.t_data = t_idx, t_data
 
     # ✅ 수락 버튼
     @discord.ui.button(label="✅ 수락", style=discord.ButtonStyle.green)
@@ -23,9 +23,10 @@ class DuelView(discord.ui.View):
             await interaction.response.send_message("❌ 당신은 대상자가 아닙니다.", ephemeral=True)
             return
 
+        # 무조건 defer (상호작용 실패 방지)
         await interaction.response.defer()
 
-        # 신청 Embed 삭제
+        # 신청 Embed 삭제 (안되면 무시)
         try:
             await interaction.message.delete()
         except:
@@ -58,23 +59,26 @@ class DuelView(discord.ui.View):
         c_sum, t_sum = sum(c_rolls), sum(t_rolls)
         if c_sum > t_sum:
             winner, loser = challenger, target
-            w_idx, w_data, l_idx, l_data = self.c_idx, self.c_data, self.t_idx, self.c_data
+            w_idx, l_idx = self.c_idx, self.t_idx
+            w_gold = safe_int(self.c_data.get("골드", 0))
+            l_gold = safe_int(self.t_data.get("골드", 0))
             result_text = f"🎉 **{challenger.name}** 승리!"
         elif t_sum > c_sum:
             winner, loser = target, challenger
-            w_idx, w_data, l_idx, l_data = self.t_idx, self.c_data, self.c_idx, self.c_data
+            w_idx, l_idx = self.t_idx, self.c_idx
+            w_gold = safe_int(self.t_data.get("골드", 0))
+            l_gold = safe_int(self.c_data.get("골드", 0))
             result_text = f"🎉 **{target.name}** 승리!"
         else:
             winner = loser = None
             result_text = "🤝 무승부! (골드 이동 없음)"
 
         # 골드 갱신
-        winner_gold = loser_gold = None
         if winner and loser:
-            winner_gold = safe_int(w_data.get("골드", 0)) + self.amount
-            loser_gold = safe_int(l_data.get("골드", 0)) - self.amount
-            self.sheet.update_cell(w_idx, 13, winner_gold)
-            self.sheet.update_cell(l_idx, 13, loser_gold)
+            new_w_gold = w_gold + self.amount
+            new_l_gold = l_gold - self.amount
+            self.sheet.update_cell(w_idx, 13, new_w_gold)
+            self.sheet.update_cell(l_idx, 13, new_l_gold)
 
         # 결과 Embed
         embed = discord.Embed(title="⚔️ 결투 결과", color=discord.Color.gold())
@@ -89,10 +93,10 @@ class DuelView(discord.ui.View):
                 inline=False
             )
             embed.set_footer(
-                text=f"{winner.name} 보유: {winner_gold}골드 | {loser.name} 보유: {loser_gold}골드"
+                text=f"{winner.name} 보유: {new_w_gold}골드 | {loser.name} 보유: {new_l_gold}골드"
             )
 
-        # 중간 로그 삭제
+        # 중간 로그 메시지 삭제
         for msg in duel_msgs:
             try:
                 await msg.delete()
@@ -134,7 +138,7 @@ class Fight(commands.Cog):
         target = 대상
         challenger_id, target_id = str(challenger.id), str(target.id)
 
-        await interaction.response.defer(ephemeral=True)  # 시전자 안내는 에페메랄로
+        await interaction.response.defer(ephemeral=True)
 
         try:
             if challenger_id == target_id:
@@ -174,7 +178,7 @@ class Fight(commands.Cog):
                 )
                 return
 
-            # 시전자 안내
+            # 시전자 안내 (ephemeral)
             await interaction.edit_original_response(content="✅ 결투 신청을 보냈습니다!")
 
             # 공개 임베드
