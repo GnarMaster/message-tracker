@@ -261,7 +261,10 @@ class Boss(commands.Cog):
                     hit = random.random() <= 0.5
                 i += 1
                 multiplier /= 2
-
+            if job in ["폭뢰술사", "연격마도사"]:
+                logs.append("⚡ 2차 전직 보정: 총 피해 1.5배 적용!")
+                total_damage = int(total_damage * 1.5)
+       
         # 🏹 궁수 - 더블샷 (보스에게 2발)
         elif job in ["궁수","저격수","연사수"]:
             header_msg = f"🏹 {user.name} 님의 **더블샷** 발동!"
@@ -278,7 +281,11 @@ class Boss(commands.Cog):
                     total_damage += dmg
                 else:
                     logs.append(f"{i+1}타: ❌ 빗나감")
-
+            # ✅ 2차 직업 보정
+            if job in ["저격수", "연사수"]:
+                logs.append("⚡ 2차 전직 보정: 총 피해 1.5배 적용!")
+                total_damage = int(total_damage * 1.5)
+   
         # 🥷 도적 - 스틸
         elif job in  ["도적","암살자","의적","카피닌자"]:
             header_msg = f"🥷 {user.name} 님이 보스를 **스틸**하였다!"
@@ -336,6 +343,11 @@ class Boss(commands.Cog):
                 dmg = 0
                 logs.append(f"☠️ 자폭! (데미지 없음)")
             total_damage += dmg
+
+            # ✅ 2차 직업 보정
+            if job in ["축제광", "파괴광"]:
+                logs.append("💥 2차 전직 보정: 총 피해 1.5배 적용!")
+                total_damage = int(total_damage * 1.5)
 
         # 👊 기본 평타
         else:
