@@ -2,8 +2,6 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import random
-import asyncio
-
 from utils import get_sheet, safe_int
 
 
@@ -16,7 +14,8 @@ class Gacha(commands.Cog):
         user_id = str(interaction.user.id)
         username = interaction.user.name
 
-        await interaction.response.defer()
+        # ✅ 무조건 첫 응답 예약 (에러 방지)
+        await interaction.response.defer(ephemeral=False)
 
         try:
             sheet = get_sheet()
@@ -50,7 +49,7 @@ class Gacha(commands.Cog):
 
             new_gold += reward
 
-            # 시트 업데이트 (골드 = L열, 12번째)
+            # 시트 업데이트 (골드 = L열, 보통 12번째 열 → 위치 확인 필요!)
             sheet.update_cell(row_idx, 12, new_gold)
 
             # 결과 메시지 전송 (5분 뒤 자동 삭제)
@@ -64,7 +63,7 @@ class Gacha(commands.Cog):
 
         except Exception as e:
             print(f"❗ /뽑기 에러: {e}")
-            await interaction.followup.send("⚠️ 오류가 발생했습니다.", ephemeral=True)
+            await interaction.followup.send("⚠️ 오류가 발생했습니다.")
 
 
 async def setup(bot: commands.Bot):
