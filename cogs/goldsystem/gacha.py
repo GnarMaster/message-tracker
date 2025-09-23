@@ -92,6 +92,9 @@ class GachaButtonCog(commands.Cog):
             )
             return
 
+        # ✅ 1. 먼저 defer를 호출하여 즉시 응답합니다.
+        await interaction.response.defer()
+
         embed = discord.Embed(
             title="🎰 뽑기 머신",
             description="버튼을 눌러 뽑기를 돌려보세요! (10골드 필요)",
@@ -110,8 +113,9 @@ class GachaButtonCog(commands.Cog):
         embed.add_field(name="📊 확률표", value=prob_text, inline=False)
 
         view = GachaButtonView(self.bot)
-        # ✅ 커맨드는 즉시 응답 (이전 코드와 동일)
-        await interaction.response.send_message(embed=embed, view=view)
+        
+        # ✅ 2. defer 이후에는 followup.send를 사용합니다.
+        await interaction.followup.send(embed=embed, view=view)
         print(f"✅ 뽑기 머신이 채널 {interaction.channel.id} 에 설치됨")
 
 
