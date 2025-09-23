@@ -4,7 +4,7 @@ import random
 from utils import get_sheet, safe_int
 
 # 👉 뽑기방 채널 ID를 여기에 넣으세요
-GACHA_CHANNEL_ID = 123456789012345678  # 실제 채널 ID로 교체
+GACHA_CHANNEL_ID = 1419961802938384435  # 실제 채널 ID로 교체
 
 
 class GachaButtonView(discord.ui.View):
