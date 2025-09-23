@@ -82,15 +82,27 @@ class GachaButtonCog(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         channel = self.bot.get_channel(GACHA_CHANNEL_ID)
-        if channel:
-            embed = discord.Embed(
-                title="🎰 뽑기 머신",
-                description="버튼을 눌러 뽑기를 돌려보세요! (10골드 필요)",
-                color=discord.Color.green()
-            )
-            view = GachaButtonView(self.bot)
-            await channel.send(embed=embed, view=view)
-            print(f"✅ 뽑기 머신이 채널 {GACHA_CHANNEL_ID} 에 설정됨")
+        if not channel:
+            return
+
+        # ✅ 최근 20개 메시지 확인해서 "뽑기 머신"이 이미 있으면 새로 안 띄움
+        async for msg in channel.history(limit=20):
+            if msg.author == self.bot.user and msg.embeds:
+                embed = msg.embeds[0]
+                if embed.title == "🎰 뽑기 머신":
+                    print(f"⚠️ 이미 뽑기 머신이 채널 {GACHA_CHANNEL_ID} 에 존재함 → 새로 생성하지 않음")
+                    self.bot.add_view(GachaButtonView(self.bot))  # 버튼은 다시 등록해줘야 함
+                    return
+
+        # 없으면 새로 생성
+        embed = discord.Embed(
+            title="🎰 뽑기 머신",
+            description="버튼을 눌러 뽑기를 돌려보세요! (10골드 필요)",
+            color=discord.Color.green()
+        )
+        view = GachaButtonView(self.bot)
+        await channel.send(embed=embed, view=view)
+        print(f"✅ 뽑기 머신이 채널 {GACHA_CHANNEL_ID} 에 새로 생성됨")
 
         # 봇 재시작 후에도 버튼이 동작하도록 view 등록
         self.bot.add_view(GachaButtonView(self.bot))
