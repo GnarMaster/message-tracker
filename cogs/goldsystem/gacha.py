@@ -50,7 +50,7 @@ class Gacha(commands.Cog):
             new_gold += reward
 
             # 시트 업데이트 (골드 = L열, 보통 12번째 열 → 위치 확인 필요!)
-            sheet.update_cell(row_idx, 12, new_gold)
+            sheet.update_cell(row_idx, 13, new_gold)
 
             # 결과 메시지 전송 (5분 뒤 자동 삭제)
             await interaction.followup.send(
