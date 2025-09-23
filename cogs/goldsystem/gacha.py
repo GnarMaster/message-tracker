@@ -3,6 +3,7 @@ from discord.ext import commands
 import random
 from discord import app_commands
 import asyncio
+import traceback # traceback 모듈을 추가합니다.
 from utils import get_sheet, safe_int
 
 # 👉 뽑기 채널 ID (이 채널에서만 /뽑기기계 실행 가능)
@@ -70,8 +71,11 @@ class GachaButtonView(discord.ui.View):
             await interaction.followup.send(embed=embed, delete_after=300)
 
         except Exception as e:
-            print(f"❗ 뽑기 버튼 에러: {e}")
+            # ❗ 이 부분이 핵심 변경점입니다.
+            print("❗ 뽑기 버튼 에러 발생:")
+            traceback.print_exc() # 상세 오류 내용을 출력합니다.
             try:
+                # 사용자에게는 친절한 오류 메시지를 보냅니다.
                 await interaction.followup.send("⚠️ 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.", ephemeral=True)
             except:
                 pass
@@ -84,7 +88,6 @@ class GachaButtonCog(commands.Cog):
 
     @app_commands.command(name="뽑기기계", description="현재 채널에 뽑기 머신을 설치합니다. (가차채널 전용)")
     async def 뽑기기계(self, interaction: discord.Interaction):
-        # ✅ 채널 제한
         if interaction.channel.id != GACHA_CHANNEL_ID:
             await interaction.response.send_message(
                 f"❌ 이 명령어는 지정된 뽑기방에서만 사용할 수 있어요!",
@@ -92,16 +95,12 @@ class GachaButtonCog(commands.Cog):
             )
             return
 
-        # ✅ 1. 먼저 defer를 호출하여 즉시 응답합니다.
         await interaction.response.defer()
-
         embed = discord.Embed(
             title="🎰 뽑기 머신",
             description="버튼을 눌러 뽑기를 돌려보세요! (10골드 필요)",
             color=discord.Color.green()
         )
-
-        # 확률표 추가
         prob_text = (
             "1골드 → 30%\n"
             "5골드 → 30%\n"
@@ -111,13 +110,9 @@ class GachaButtonCog(commands.Cog):
             "100골드 → 1%"
         )
         embed.add_field(name="📊 확률표", value=prob_text, inline=False)
-
         view = GachaButtonView(self.bot)
-        
-        # ✅ 2. defer 이후에는 followup.send를 사용합니다.
         await interaction.followup.send(embed=embed, view=view)
         print(f"✅ 뽑기 머신이 채널 {interaction.channel.id} 에 설치됨")
-
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(GachaButtonCog(bot))
