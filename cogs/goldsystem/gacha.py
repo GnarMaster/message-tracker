@@ -2,11 +2,12 @@ import discord
 from discord.ext import commands
 import random
 from discord import app_commands
+import asyncio
 from utils import get_sheet, safe_int
-import asyncio # asyncio 모듈을 추가했습니다.
 
 # 👉 뽑기 채널 ID (이 채널에서만 /뽑기기계 실행 가능)
-GACHA_CHANNEL_ID = 1419961802938384435 # 실제 가차 채널 ID로 교체하세요
+GACHA_CHANNEL_ID = 1419961802938384435  # 실제 가차 채널 ID로 교체하세요
+
 
 class GachaButtonView(discord.ui.View):
     def __init__(self, bot):
@@ -19,11 +20,12 @@ class GachaButtonView(discord.ui.View):
         username = interaction.user.name
 
         try:
-            # ✅ 먼저 defer (3초 타임아웃 방지)
+            # ✅ 1. 먼저 defer를 호출하여 사용자에게 즉시 응답합니다.
             await interaction.response.defer(ephemeral=False)
 
-            sheet = get_sheet()
-            records = sheet.get_all_records()
+            # ✅ 2. 시간이 오래 걸리는 모든 구글 시트 작업을 비동기적으로 실행합니다.
+            sheet = await asyncio.to_thread(get_sheet)
+            records = await asyncio.to_thread(sheet.get_all_records)
 
             user_row = None
             for idx, row in enumerate(records, start=2):
@@ -46,12 +48,15 @@ class GachaButtonView(discord.ui.View):
 
             # 보상 확률
             rewards = [1, 5, 10, 20, 50, 100]
-            weights = [30, 30, 20, 15, 4, 1] # 총합 100
+            weights = [30, 30, 20, 15, 4, 1]  # 총합 100
             reward = random.choices(rewards, weights=weights, k=1)[0]
 
             new_gold += reward
 
-            # ✅ 1. 결과를 먼저 디스코드에 보냅니다. (이 작업은 빠름)
+            # ✅ 3. 구글 시트 업데이트를 비동기적으로 실행합니다.
+            await asyncio.to_thread(sheet.update_cell, row_idx, 13, new_gold)
+
+            # ✅ 4. 모든 작업이 완료된 후 최종 결과를 전송합니다.
             embed = discord.Embed(
                 title="🎰 뽑기 결과!",
                 description=f"{username} 님이 뽑기를 돌렸습니다!",
@@ -64,24 +69,18 @@ class GachaButtonView(discord.ui.View):
 
             await interaction.followup.send(embed=embed, delete_after=300)
 
-            # 💡 2. 시간이 오래 걸리는 Google Sheet 업데이트는 응답을 보낸 후 별도로 처리합니다.
-            #     asyncio.to_thread를 사용하여 동기(blocking) 함수를 비동기로 실행합니다.
-            await asyncio.to_thread(sheet.update_cell, row_idx, 13, new_gold)
-
         except Exception as e:
             print(f"❗ 뽑기 버튼 에러: {e}")
             try:
-                # 오류 발생 시 사용자에게 알림
                 await interaction.followup.send("⚠️ 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.", ephemeral=True)
             except:
                 pass
 
-# --- (이하 코드는 동일) ---
 
 class GachaButtonCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.bot.add_view(GachaButtonView(self.bot)) # 봇 재시작 후에도 버튼 유지
+        self.bot.add_view(GachaButtonView(self.bot))
 
     @app_commands.command(name="뽑기기계", description="현재 채널에 뽑기 머신을 설치합니다. (가차채널 전용)")
     async def 뽑기기계(self, interaction: discord.Interaction):
@@ -111,8 +110,10 @@ class GachaButtonCog(commands.Cog):
         embed.add_field(name="📊 확률표", value=prob_text, inline=False)
 
         view = GachaButtonView(self.bot)
+        # ✅ 커맨드는 즉시 응답 (이전 코드와 동일)
         await interaction.response.send_message(embed=embed, view=view)
         print(f"✅ 뽑기 머신이 채널 {interaction.channel.id} 에 설치됨")
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(GachaButtonCog(bot))
