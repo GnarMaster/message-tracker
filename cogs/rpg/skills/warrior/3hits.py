@@ -44,139 +44,146 @@ class ThreeHits(commands.Cog):
         username = interaction.user.name
         target_id = str(target.id)
 
-        await interaction.response.defer()
+        # ✅ 첫 응답은 비공개로 defer
+        await interaction.response.defer(ephemeral=True)
 
-        # 쿨타임 체크
-        last_used = self.get_last_skill_time(user_id, "삼연격")
-        if last_used and datetime.now() < last_used + timedelta(hours=4):
-            remain = (last_used + timedelta(hours=4)) - datetime.now()
-            minutes = remain.seconds // 60
-            await interaction.followup.send(
-                f"⏳ 아직 쿨타임입니다! {minutes}분 뒤에 다시 시도하세요."
-                
-            )
-            return
-
-        sheet = get_sheet()
-        records = sheet.get_all_records()
-
-        user_row, target_row = None, None
-        for idx, row in enumerate(records, start=2):
-            if str(row.get("유저 ID", "")) == user_id:
-                user_row = (idx, row)
-            if str(row.get("유저 ID", "")) == target_id:
-                target_row = (idx, row)
-
-        if not user_row:
-            await interaction.followup.send("⚠️ 당신의 데이터가 없습니다.")
-            return
-        if not target_row:
-            await interaction.followup.send("⚠️ 대상 유저의 데이터가 없습니다.")
-            return
-
-        # 직업 확인
-        job = user_row[1].get("직업", "백수")
-        if job == "카피닌자":
-            copied_skill = get_copied_skill(user_id)
-            if copied_skill != "삼연격":
-                await interaction.followup.send("❌ 현재 복사한 스킬이 삼연격이 아닙니다.")
+        try:
+            # 쿨타임 체크
+            last_used = self.get_last_skill_time(user_id, "삼연격")
+            if last_used and datetime.now() < last_used + timedelta(hours=4):
+                remain = (last_used + timedelta(hours=4)) - datetime.now()
+                minutes = remain.seconds // 60
+                await interaction.edit_original_response(
+                    content=f"⏳ 아직 쿨타임입니다! {minutes}분 뒤에 다시 시도하세요."
+                )
                 return
-            clear_copied_skill(user_id)
-            prefix_msg = f"💀 카피닌자 {interaction.user.name}님이 복사한 스킬 **삼연격**을 발동!\n"
-        elif job not in ["전사", "검성", "투신", "검투사"]:
-            await interaction.followup.send("❌ 전사 계열만 사용할 수 있는 스킬입니다!")
-            return
-        else:
-            if job == "검성":
-                prefix_msg = f"🗡️ 검성 {interaction.user.name} 님이 {target.mention} 님에게 **삼연격**을 시전했다!\n"
-            elif job == "투신":
-                prefix_msg = f"🪓 투신 {interaction.user.name} 님이 {target.mention} 님에게 **삼연격**을 시전했다!\n"
-            elif job == "검투사":
-                prefix_msg = f"🛡️ 검투사 {interaction.user.name} 님이 {target.mention} 님에게 **삼연격**을 시전했다!\n"
+
+            sheet = get_sheet()
+            records = sheet.get_all_records()
+
+            user_row, target_row = None, None
+            for idx, row in enumerate(records, start=2):
+                if str(row.get("유저 ID", "")) == user_id:
+                    user_row = (idx, row)
+                if str(row.get("유저 ID", "")) == target_id:
+                    target_row = (idx, row)
+
+            if not user_row:
+                await interaction.edit_original_response(content="⚠️ 당신의 데이터가 없습니다.")
+                return
+            if not target_row:
+                await interaction.edit_original_response(content="⚠️ 대상 유저의 데이터가 없습니다.")
+                return
+
+            # 직업 확인
+            job = user_row[1].get("직업", "백수")
+            if job == "카피닌자":
+                copied_skill = get_copied_skill(user_id)
+                if copied_skill != "삼연격":
+                    await interaction.edit_original_response(content="❌ 현재 복사한 스킬이 삼연격이 아닙니다.")
+                    return
+                clear_copied_skill(user_id)
+                prefix_msg = f"💀 카피닌자 {interaction.user.name}님이 복사한 스킬 **삼연격**을 발동!\n"
+            elif job not in ["전사", "검성", "투신", "검투사"]:
+                await interaction.edit_original_response(content="❌ 전사 계열만 사용할 수 있는 스킬입니다!")
+                return
             else:
-                prefix_msg = f"⚔️ {interaction.user.name} 님이 {target.mention} 님에게 **삼연격**을 시전했다!\n"
-
-        level = safe_int(user_row[1].get("레벨", 1))
-
-        def calc_base_damage():
-            crit_roll = random.randint(1, 100)
-            if crit_roll <= 10:  # 10% 치명타
-                return 16 + (level * 2), "🔥 치명타!"
-            else:
-                return 8 + level, "✅ 명중!"
-
-        if job == "검성":
-            chances = [90, 60, 30, 15]
-        else:
-            chances = [90, 45, 15]
-
-        logs = []
-        total_damage = 0
-
-        for i, chance in enumerate(chances, start=1):
-            roll = random.randint(1, 100)
-            if roll <= chance:
-                base, msg = calc_base_damage()
-                if i == 2:
-                    dmg = int(base * 1.3)
-                elif i == 3:
-                    dmg = int(base * 1.5)
-                elif i == 4:
-                    dmg = int(base * 1.8)
+                if job == "검성":
+                    prefix_msg = f"🗡️ 검성 {interaction.user.name} 님이 {target.mention} 님에게 **사연격**을 시전했다!\n"
+                elif job == "투신":
+                    prefix_msg = f"🪓 투신 {interaction.user.name} 님이 {target.mention} 님에게 **삼연격**을 시전했다!\n"
+                elif job == "검투사":
+                    prefix_msg = f"🛡️ 검투사 {interaction.user.name} 님이 {target.mention} 님에게 **삼연격**을 시전했다!\n"
                 else:
-                    dmg = base
-                logs.append(f"{i}타: {msg} ({dmg})")
-                total_damage += dmg
+                    prefix_msg = f"⚔️ {interaction.user.name} 님이 {target.mention} 님에게 **삼연격**을 시전했다!\n"
+
+            level = safe_int(user_row[1].get("레벨", 1))
+
+            def calc_base_damage():
+                crit_roll = random.randint(1, 100)
+                if crit_roll <= 10:  # 10% 치명타
+                    return 16 + (level * 2), "🔥 치명타!"
+                else:
+                    return 8 + level, "✅ 명중!"
+
+            if job == "검성":
+                chances = [90, 60, 30, 15]
             else:
-                logs.append(f"{i}타: ❌ 실패...")
+                chances = [90, 45, 15]
 
-        # 메인 타겟 exp 차감
-        target_idx, target_data = target_row
-        new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - total_damage
-        sheet.update_cell(target_idx, 11, new_target_exp)
+            logs = []
+            total_damage = 0
 
-        # 검투사 전용: 25% 확률로 반격 버프 부여
-        if job == "검투사":
-            if random.random() <= 0.25:
-                add_counter_buff(user_id, username)
+            for i, chance in enumerate(chances, start=1):
+                roll = random.randint(1, 100)
+                if roll <= chance:
+                    base, msg = calc_base_damage()
+                    if i == 2:
+                        dmg = int(base * 1.3)
+                    elif i == 3:
+                        dmg = int(base * 1.5)
+                    elif i == 4:
+                        dmg = int(base * 1.8)
+                    else:
+                        dmg = base
+                    logs.append(f"{i}타: {msg} ({dmg})")
+                    total_damage += dmg
+                else:
+                    logs.append(f"{i}타: ❌ 실패...")
 
-        # 결과 메시지 생성
-        result_msg = "\n".join(logs)
-        result_msg += f"\n👉 총합: {target.mention} 님에게 {total_damage} 피해!"
+            # 메인 타겟 exp 차감
+            target_idx, target_data = target_row
+            new_target_exp = safe_int(target_data.get("현재레벨경험치", 0)) - total_damage
+            sheet.update_cell(target_idx, 11, new_target_exp)
 
-        # ✅ 메인 타겟 반격 체크
-        counter_msg_main = check_counter(user_id, username, target_id, target.mention, total_damage)
-        if counter_msg_main:
-            result_msg += f"\n{counter_msg_main}"
+            # 검투사 전용: 25% 확률로 반격 버프 부여
+            if job == "검투사":
+                if random.random() <= 0.25:
+                    add_counter_buff(user_id, username)
 
-        # 투신 전용 추가 일격
-        if job == "투신":
-            candidates = [
-                (idx, row) for idx, row in enumerate(records, start=2)
-                if str(row.get("유저 ID", "")) not in (user_id, target_id)
-                and safe_int(row.get("레벨", 1)) >= 5
-            ]
-            if candidates:
-                rand_idx, rand_data = random.choice(candidates)
-                rand_base, rand_msg = calc_base_damage()
-                bonus_dmg = int(rand_base * 1.2)
+            # 결과 메시지 생성
+            result_msg = "\n".join(logs)
+            result_msg += f"\n👉 총합: {target.mention} 님에게 {total_damage} 피해!"
 
-                # 경험치 차감
-                rand_new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) - bonus_dmg
-                sheet.update_cell(rand_idx, 11, rand_new_exp)
+            # ✅ 메인 타겟 반격 체크
+            counter_msg_main = check_counter(user_id, username, target_id, target.mention, total_damage)
+            if counter_msg_main:
+                result_msg += f"\n{counter_msg_main}"
 
-                nickname = rand_data.get("닉네임", "???")
-                result_msg += f"\n⚡ 투신의 추가 일격! {nickname} → {rand_msg} ({bonus_dmg})"
+            # 투신 전용 추가 일격
+            if job == "투신":
+                candidates = [
+                    (idx, row) for idx, row in enumerate(records, start=2)
+                    if str(row.get("유저 ID", "")) not in (user_id, target_id)
+                    and safe_int(row.get("레벨", 1)) >= 5
+                ]
+                if candidates:
+                    rand_idx, rand_data = random.choice(candidates)
+                    rand_base, rand_msg = calc_base_damage()
+                    bonus_dmg = int(rand_base * 1.2)
 
-                # ✅ 추가 일격 반격 체크
-                counter_msg_bonus = check_counter(user_id, username, str(rand_data.get("유저 ID")), nickname, bonus_dmg)
-                if counter_msg_bonus:
-                    result_msg += f"\n{counter_msg_bonus}"
+                    # 경험치 차감
+                    rand_new_exp = safe_int(rand_data.get("현재레벨경험치", 0)) - bonus_dmg
+                    sheet.update_cell(rand_idx, 11, rand_new_exp)
 
-        # 로그 기록
-        self.log_skill_use(user_id, username, "삼연격", f"대상: {target.name}, 총 {total_damage} 피해")
+                    nickname = rand_data.get("닉네임", "???")
+                    result_msg += f"\n⚡ 투신의 추가 일격! {nickname} → {rand_msg} ({bonus_dmg})"
 
-        await interaction.followup.send(prefix_msg + result_msg)
+                    # ✅ 추가 일격 반격 체크
+                    counter_msg_bonus = check_counter(user_id, username, str(rand_data.get("유저 ID")), nickname, bonus_dmg)
+                    if counter_msg_bonus:
+                        result_msg += f"\n{counter_msg_bonus}"
+
+            # 로그 기록
+            self.log_skill_use(user_id, username, "삼연격", f"대상: {target.name}, 총 {total_damage} 피해")
+
+            # ✅ 성공 시: 비공개 응답 삭제 후 공개 메시지
+            await interaction.delete_original_response()
+            await interaction.followup.send(prefix_msg + result_msg)
+
+        except Exception as e:
+            # 예외 처리: 비공개 메시지로 출력
+            await interaction.edit_original_response(content=f"❌ 오류 발생: {e}")
 
 async def setup(bot):
     await bot.add_cog(ThreeHits(bot))
