@@ -19,9 +19,13 @@ class GachaButtonView(discord.ui.View):
         username = interaction.user.name
 
         try:
-            # 🔹 먼저 즉시 응답 보내서 타임아웃 방지
-            msg = await interaction.response.send_message("🎰 뽑는 중...", ephemeral=False)
+            # 🔹 즉시 defer 해서 interaction 타임아웃 방지
+            await interaction.response.defer(thinking=True, ephemeral=False)
 
+            # 🔹 "뽑는 중..." 안내 메시지 전송 (followup)
+            msg = await interaction.followup.send("🎰 뽑는 중...", wait=True)
+
+            # === 실제 로직 ===
             sheet = get_sheet()
             records = sheet.get_all_records()
 
@@ -32,21 +36,21 @@ class GachaButtonView(discord.ui.View):
                     break
 
             if not user_row:
-                await msg.edit(content="⚠️ 데이터가 없습니다. 먼저 메시지를 쳐서 등록하세요.")
+                await msg.edit(content="⚠️ 데이터가 없습니다. 먼저 메시지를 쳐서 등록하세요.", embed=None, view=None)
                 return
 
             row_idx, user_data = user_row
             current_gold = safe_int(user_data.get("골드", 0))
 
             if current_gold < 10:
-                await msg.edit(content="💰 골드가 부족합니다! (최소 10 필요)")
+                await msg.edit(content="💰 골드가 부족합니다! (최소 10 필요)", embed=None, view=None)
                 return
 
             new_gold = current_gold - 10
 
-            # 🔹 보상 및 확률 수정 반영
+            # 🔹 보상 및 확률
             rewards = [1, 5, 10, 20, 50, 100]
-            weights = [30, 30, 20, 15, 4, 1]  # 총합 100 → 기댓값 ≈ 10
+            weights = [30, 30, 20, 15, 4, 1]  # 총합 100
             reward = random.choices(rewards, weights=weights, k=1)[0]
 
             new_gold += reward
@@ -62,7 +66,7 @@ class GachaButtonView(discord.ui.View):
             embed.add_field(name="보유 골드", value=f"{new_gold} 골드", inline=False)
             embed.set_footer(text="⏳ 이 메시지는 5분 뒤 자동 삭제됩니다.")
 
-            # 🔹 결과로 교체
+            # 🔹 결과 메시지로 교체
             await msg.edit(content=None, embed=embed, view=None, delete_after=300)
 
         except Exception as e:
