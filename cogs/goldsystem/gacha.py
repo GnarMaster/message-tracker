@@ -1,15 +1,16 @@
 import discord
 from discord.ext import commands
 import random
+from discord import app_commands
 from utils import get_sheet, safe_int
 
-# 👉 뽑기방 채널 ID를 여기에 넣으세요
-GACHA_CHANNEL_ID = 1419961802938384435  # 실제 채널 ID로 교체
+# 👉 뽑기 채널 ID (이 채널에서만 /뽑기기계 실행 가능)
+GACHA_CHANNEL_ID = 1419961802938384435  # 실제 가차 채널 ID로 교체하세요
 
 
 class GachaButtonView(discord.ui.View):
     def __init__(self, bot):
-        super().__init__(timeout=None)  # timeout=None → 봇 켜져 있는 한 버튼 살아있음
+        super().__init__(timeout=None)
         self.bot = bot
 
     @discord.ui.button(label="뽑기 돌리기 🎰", style=discord.ButtonStyle.green, custom_id="gacha_button")
@@ -17,16 +18,14 @@ class GachaButtonView(discord.ui.View):
         user_id = str(interaction.user.id)
         username = interaction.user.name
 
-        # ✅ 먼저 응답 예약 (404 방지)
         await interaction.response.defer(ephemeral=False)
 
         try:
             sheet = get_sheet()
             records = sheet.get_all_records()
 
-            # 유저 찾기
             user_row = None
-            for idx, row in enumerate(records, start=2):  # 2행부터 데이터 시작
+            for idx, row in enumerate(records, start=2):
                 if str(row.get("유저 ID", "")) == user_id:
                     user_row = (idx, row)
                     break
@@ -42,18 +41,15 @@ class GachaButtonView(discord.ui.View):
                 await interaction.followup.send("💰 골드가 부족합니다! (최소 10 필요)", ephemeral=True)
                 return
 
-            # 참가비 차감
             new_gold = current_gold - 10
 
-            # 🎲 랜덤 보상 (기댓값 10골드)
             rewards = [1, 5, 10, 20, 50, 100]
-            weights = [35, 25, 20, 15, 4, 1]  # 총합 100
+            weights = [35, 25, 20, 15, 4, 1]  # 기댓값 10에 맞춘 가중치
             reward = random.choices(rewards, weights=weights, k=1)[0]
 
             new_gold += reward
-            sheet.update_cell(row_idx, 13, new_gold)  # ✅ 골드 = M열 (13번째 열)
+            sheet.update_cell(row_idx, 13, new_gold)  # M열 = 골드
 
-            # 결과 임베드
             embed = discord.Embed(
                 title="🎰 뽑기 결과!",
                 description=f"{username} 님이 뽑기를 돌렸습니다!",
@@ -64,11 +60,10 @@ class GachaButtonView(discord.ui.View):
             embed.add_field(name="보유 골드", value=f"{new_gold} 골드", inline=False)
             embed.set_footer(text="⏳ 이 메시지는 5분 뒤 자동 삭제됩니다.")
 
-            # ✅ 결과 출력 (5분 뒤 자동 삭제)
             await interaction.followup.send(embed=embed, delete_after=300)
 
         except Exception as e:
-            print(f"❗ /뽑기 버튼 에러: {e}")
+            print(f"❗ 뽑기 버튼 에러: {e}")
             try:
                 await interaction.followup.send("⚠️ 오류가 발생했습니다.", ephemeral=True)
             except:
@@ -78,34 +73,26 @@ class GachaButtonView(discord.ui.View):
 class GachaButtonCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.bot.add_view(GachaButtonView(self.bot))  # 봇 재시작 후에도 버튼 유지
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        channel = self.bot.get_channel(GACHA_CHANNEL_ID)
-        if not channel:
+    @app_commands.command(name="뽑기기계", description="현재 채널에 뽑기 머신을 설치합니다. (가차채널 전용)")
+    async def 뽑기기계(self, interaction: discord.Interaction):
+        # ✅ 채널 제한
+        if interaction.channel.id != GACHA_CHANNEL_ID:
+            await interaction.response.send_message(
+                f"❌ 이 명령어는 지정된 뽑기방에서만 사용할 수 있어요!",
+                ephemeral=True
+            )
             return
 
-        # ✅ 최근 20개 메시지 확인해서 "뽑기 머신"이 이미 있으면 새로 안 띄움
-        async for msg in channel.history(limit=20):
-            if msg.author == self.bot.user and msg.embeds:
-                embed = msg.embeds[0]
-                if embed.title == "🎰 뽑기 머신":
-                    print(f"⚠️ 이미 뽑기 머신이 채널 {GACHA_CHANNEL_ID} 에 존재함 → 새로 생성하지 않음")
-                    self.bot.add_view(GachaButtonView(self.bot))  # 버튼은 다시 등록해줘야 함
-                    return
-
-        # 없으면 새로 생성
         embed = discord.Embed(
             title="🎰 뽑기 머신",
             description="버튼을 눌러 뽑기를 돌려보세요! (10골드 필요)",
             color=discord.Color.green()
         )
         view = GachaButtonView(self.bot)
-        await channel.send(embed=embed, view=view)
-        print(f"✅ 뽑기 머신이 채널 {GACHA_CHANNEL_ID} 에 새로 생성됨")
-
-        # 봇 재시작 후에도 버튼이 동작하도록 view 등록
-        self.bot.add_view(GachaButtonView(self.bot))
+        await interaction.response.send_message(embed=embed, view=view)
+        print(f"✅ 뽑기 머신이 채널 {interaction.channel.id} 에 설치됨")
 
 
 async def setup(bot: commands.Bot):
