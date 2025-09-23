@@ -354,7 +354,7 @@ async def sync_cache_to_sheet():
                     level,
                     inlevel_exp,
                     "백수",
-                    0
+                    100
                 ])
 
             # 처리된 캐시 키를 삭제 목록에 추가
