@@ -102,9 +102,9 @@ class ThreeHits(commands.Cog):
             def calc_base_damage():
                 crit_roll = random.randint(1, 100)
                 if crit_roll <= 10:  # 10% 치명타
-                    return 16 + (level * 2), "🔥 치명타!"
+                    return 14 + (level * 2), "🔥 치명타!"
                 else:
-                    return 8 + level, "✅ 명중!"
+                    return 7 + level, "✅ 명중!"
 
             if job == "검성":
                 chances = [90, 60, 30, 15]
@@ -119,11 +119,11 @@ class ThreeHits(commands.Cog):
                 if roll <= chance:
                     base, msg = calc_base_damage()
                     if i == 2:
-                        dmg = int(base * 1.3)
+                        dmg = int(base * 1.2)
                     elif i == 3:
-                        dmg = int(base * 1.5)
+                        dmg = int(base * 1.3)
                     elif i == 4:
-                        dmg = int(base * 1.8)
+                        dmg = int(base * 1.5)
                     else:
                         dmg = base
                     logs.append(f"{i}타: {msg} ({dmg})")
