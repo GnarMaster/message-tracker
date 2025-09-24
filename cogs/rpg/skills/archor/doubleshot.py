@@ -39,7 +39,7 @@ class Archer(commands.Cog):
         name="더블샷",
         description="궁수 전용 스킬: 지정 2명에게 연속 사격 (쿨타임 4시간)"
     )
-    async def 더블샷(self, interaction: discord.Interaction, target1: discord.Member, target2: discord.Member):
+    async def 더블샷(self, interaction: discord.Interaction, target1: discord.Member, target2: discord.Member = None):
         user_id = str(interaction.user.id)
         username = interaction.user.name
 
@@ -67,7 +67,7 @@ class Archer(commands.Cog):
                     user_row = (idx, row)
                 elif str(row.get("유저 ID", "")) == str(target1.id):
                     target1_row = (idx, row)
-                elif str(row.get("유저 ID", "")) == str(target2.id):
+                elif target2 and str(row.get("유저 ID", "")) == str(target2.id):  # ✅ 2번 수정: target2 있을 때만
                     target2_row = (idx, row)
                 else:
                     if safe_int(row.get("레벨", 1)) >= 5:
@@ -118,6 +118,9 @@ class Archer(commands.Cog):
             # 🔹 직업 분기
             # =====================
             if job == "저격수":
+                if target2:  # ✅ 3번 수정: 저격수는 반드시 한 명만
+                    await interaction.followup.send("❌ 저격수는 반드시 한 명만 지정해야 합니다!")
+                    return
                 result_msg = f"🏹 저격수 {username}님의 더블샷 발동!\n"
                 for i in range(2):
                     msg, dmg = shoot_arrow(target1_row[0], target1_row[1], target1, is_first=(i == 0), is_sniper=True)
@@ -149,16 +152,19 @@ class Archer(commands.Cog):
 
             else:  # 기본 궁수
                 result_msg = f"🏹 궁수 {username}님의 더블샷 발동!\n"
+                # ✅ 3번 수정: target2 없으면 같은 대상 두 번
+                if not target2_row:
+                    target2_row, target2 = target1_row, target1
+
                 msg, dmg = shoot_arrow(target1_row[0], target1_row[1], target1, is_first=True)
                 damage_logs.append(f"🏹 1타: {msg}")
                 cm = check_counter(user_id, username, str(target1.id), target1.mention, dmg)
                 if cm: counter_msgs.append(cm)
 
-                if target2_row:
-                    msg, dmg = shoot_arrow(target2_row[0], target2_row[1], target2, is_first=True)
-                    damage_logs.append(f"🏹 2타: {msg}")
-                    cm = check_counter(user_id, username, str(target2.id), target2.mention, dmg)
-                    if cm: counter_msgs.append(cm)
+                msg, dmg = shoot_arrow(target2_row[0], target2_row[1], target2, is_first=True)
+                damage_logs.append(f"🏹 2타: {msg}")
+                cm = check_counter(user_id, username, str(target2.id), target2.mention, dmg)
+                if cm: counter_msgs.append(cm)
 
             # 로그 기록
             self.log_skill_use(user_id, username, "더블샷", "; ".join(damage_logs))
