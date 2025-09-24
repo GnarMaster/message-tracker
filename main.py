@@ -194,9 +194,9 @@ async def on_message(message):
 def exp_needed_for_next_level(level: int) -> int:
 
     if level < 5:
-        return int(0.6 * (level ** 2) + level*11)
+        return int(0.5 * (level ** 2) + level*11)
     elif level < 10:
-        return int(0.8 * (level ** 2) + 100)
+        return int(0.7 * (level ** 2) + 70)
     elif level < 20:
         return int(1.2 * (level ** 2) + 150)
     elif level < 30:
