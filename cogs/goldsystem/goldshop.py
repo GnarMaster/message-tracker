@@ -55,7 +55,7 @@ class ShopSelect(discord.ui.Select):
         # ✅ 인벤토리에 추가
         add_item(self.user_id, interaction.user.name, selected_item["name"], 1)
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"✅ {selected_item['name']} 구매 완료!\n"
             f"💰 남은 골드: {new_gold}\n"
             f"🎒 아이템이 인벤토리에 추가되었습니다.",
