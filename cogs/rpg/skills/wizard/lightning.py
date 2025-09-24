@@ -153,9 +153,9 @@ class Mage(commands.Cog):
                         counter_msgs.append(cm)
 
                     if i >= 2:
-                        hit = random.random() <= 0.5
+                        hit = random.random() <= 0.7
                     i += 1
-                    multiplier /= 2
+                    multiplier *= 0.7
 
             # ======================
             # 🔹 연격마도사 (앞 2타 고정, 이후 랜덤)
@@ -183,13 +183,13 @@ class Mage(commands.Cog):
                     if cm:
                         counter_msgs.append(cm)
 
-                prob = 0.5
-                step = 3
-                while candidates and random.random() < prob:
-                    base = base_damage // step
+                multiplier = 0.7
+                i = 3
+                while candidates and random.random() < 0.7:
+                    base = int(base_damage * multiplier)
                     if base <= 0:
                         break
-                    dmg = base
+                  
                     if random.randint(1, 100) <= 10:
                         dmg *= 2
                         msgX = "🔥 치명타!"
@@ -208,8 +208,8 @@ class Mage(commands.Cog):
                     if cm:
                         counter_msgs.append(cm)
 
-                    prob *= 0.5
-                    step += 1
+                    multiplier *= 0.7
+                    i += 1
 
             # ======================
             # 🔹 기본 마법사 체라
@@ -252,9 +252,9 @@ class Mage(commands.Cog):
                         if cm:
                             counter_msgs.append(cm)
 
-                        prob = 0.5
+                        prob = 0.7
                         step = 4
-                        while candidates and random.random() < prob:
+                        while candidates and random.random() < 0.7:
                             base = base_damage // step
                             if base <= 0:
                                 break
@@ -276,7 +276,7 @@ class Mage(commands.Cog):
                             if cm:
                                 counter_msgs.append(cm)
 
-                            prob *= 0.5
+                            prob *= 0.7
                             step *= 2
 
             # 로그 기록
