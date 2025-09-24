@@ -8,6 +8,7 @@ class Inventory(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
+    
     @app_commands.command(name="인벤토리", description="내 인벤토리를 확인합니다")
     async def 인벤토리(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)  # 🔒 본인만 보이게
