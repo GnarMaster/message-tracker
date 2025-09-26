@@ -3,17 +3,20 @@ from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
 import random
+# utils에서 필요한 함수들을 그대로 임포트합니다.
 from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter
 
 class Archer(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        # self.level은 사용하지 않고, 함수 내에서 로드된 level 변수를 사용하도록 유지합니다.
 
     def get_skill_log_sheet(self):
         sheet = get_sheet().spreadsheet
         try:
             return sheet.worksheet("Skill_Log")
         except:
+            # 시트가 없으면 새로 생성합니다.
             return sheet.add_worksheet(title="Skill_Log", rows=1000, cols=5)
 
     def get_last_skill_time(self, user_id: str, skill_name: str):
@@ -35,6 +38,40 @@ class Archer(commands.Cog):
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_sheet.append_row([now_str, user_id, username, skill_name, note])
 
+    # ⭐ 1. shoot_arrow 함수 수정: 데미지만 계산하고 반환 (시트 업데이트 로직 제거)
+    def shoot_arrow(self, target_data, target_obj, is_first: bool, is_sniper: bool, level: int):
+        base = 10 + level
+        crit_chance = 20
+        if is_sniper:
+            base = 12 + level
+
+        roll = random.randint(1, 100)
+        if roll <= crit_chance:
+            dmg = base * 2
+            msg = f"🔥 치명타! ({dmg})"
+        elif roll <= 90:
+            dmg = base
+            msg = f"✅ 명중! ({dmg})"
+        else:
+            dmg = 0
+            msg = "❌ 빗나감!"
+
+        # ❌ sheet.update_cell 로직 제거
+
+        # ✅ 출력용 이름 처리
+        # target_data에 '유저 ID'가 없을 수도 있으므로 safe_int를 통해 안전하게 처리
+        target_id_str = str(target_data.get("유저 ID", ""))
+        nickname = target_data.get("닉네임") or getattr(target_obj, "name", f"ID:{target_id_str}")
+        
+        # 첫 번째 공격이거나, target_obj가 멘션 가능한 객체일 때 멘션 사용
+        if is_first and hasattr(target_obj, "mention"):
+            display_name = target_obj.mention
+        else:
+            display_name = nickname
+
+        return f"{display_name} → {msg}", dmg
+
+
     @app_commands.command(
         name="더블샷",
         description="궁수 전용 스킬: 지정 2명에게 연속 사격 (쿨타임 4시간)"
@@ -47,7 +84,7 @@ class Archer(commands.Cog):
         await interaction.response.defer(ephemeral=True)
 
         try:
-            # 쿨타임 확인
+            # 쿨타임 확인 로직은 그대로 유지합니다.
             last_used = self.get_last_skill_time(user_id, "더블샷")
             if last_used and datetime.now() < last_used + timedelta(hours=4):
                 remain = (last_used + timedelta(hours=4)) - datetime.now()
@@ -62,12 +99,15 @@ class Archer(commands.Cog):
 
             user_row, target1_row, target2_row = None, None, None
             candidates = []
+            
+            # 🎯 타겟 정보 및 시트 행 찾기
             for idx, row in enumerate(records, start=2):
-                if str(row.get("유저 ID", "")) == user_id:
+                uid_str = str(row.get("유저 ID", ""))
+                if uid_str == user_id:
                     user_row = (idx, row)
-                elif str(row.get("유저 ID", "")) == str(target1.id):
+                elif uid_str == str(target1.id):
                     target1_row = (idx, row)
-                elif target2 and str(row.get("유저 ID", "")) == str(target2.id):  # ✅ 2번 수정: target2 있을 때만
+                elif target2 and uid_str == str(target2.id):
                     target2_row = (idx, row)
                 else:
                     if safe_int(row.get("레벨", 1)) >= 5:
@@ -84,87 +124,120 @@ class Archer(commands.Cog):
                 await interaction.edit_original_response(content="❌ 궁수 계열만 사용할 수 있는 스킬입니다!")
                 return
 
-            # ✅ 여기까지 오면 성공 → 비공개 응답 삭제
+            # ✅ 여기까지 오면 성공 → 비공개 응답 삭제 (혹은 나중에 성공 메시지로 편집)
+            # 여기서는 편의상 그대로 delete_original_response()를 유지합니다.
             await interaction.delete_original_response()
-
-            # ✅ 공격 함수
-            def shoot_arrow(target_idx, target_data, target_obj, is_first: bool, is_sniper: bool = False):
-                base = 10 + level
-                crit_chance = 20
-                if is_sniper:
-                    base = 12 + level
-                roll = random.randint(1, 100)
-                if roll <= crit_chance:
-                    dmg = base * 2
-                    msg = f"🔥 치명타! ({dmg})"
-                elif roll <= 90:
-                    dmg = base
-                    msg = f"✅ 명중! ({dmg})"
-                else:
-                    dmg = 0
-                    msg = "❌ 빗나감!"
-
-                if dmg > 0:
-                    new_exp = safe_int(target_data.get("현재레벨경험치", 0)) - dmg
-                    sheet.update_cell(target_idx, 11, new_exp)
-
-                nickname = target_data.get("닉네임", target_obj.name)
-                display_name = target_obj.mention if is_first else nickname
-                return f"{display_name} → {msg}", dmg
-
+            
+            # ⭐ 2. 누적 데미지를 저장할 딕셔너리 초기화
+            # {유저_ID: [시트_행번호, 데이터_딕셔너리, 누적_데미지_합계, 타겟_객체]}
+            targets_info = {}
+            target1_id = str(target1.id)
+            targets_info[target1_id] = [target1_row[0], target1_row[1], 0, target1]
+            
+            if target2 and target2_row:
+                target2_id = str(target2.id)
+                if target2_id not in targets_info:
+                    targets_info[target2_id] = [target2_row[0], target2_row[1], 0, target2]
+            
             damage_logs, counter_msgs = [], []
 
+            # 🔨 데미지 적용 및 누적 헬퍼 함수
+            def apply_shot(target_id: str, is_first_hit: bool, is_sniper: bool = False):
+                if target_id not in targets_info: return None, 0
+
+                idx, data, total_dmg, obj = targets_info[target_id]
+                
+                # 수정된 shoot_arrow 호출 (시트 업데이트 X)
+                log_msg_part, dmg = self.shoot_arrow(data, obj, is_first_hit, is_sniper, level) 
+                
+                # 누적 데미지 업데이트
+                targets_info[target_id][2] += dmg 
+                
+                # 카운터 체크 (데미지가 0이 아니어야 카운터 체크)
+                if dmg > 0:
+                    cm = check_counter(user_id, username, target_id, obj.mention, dmg)
+                    if cm: counter_msgs.append(cm)
+                
+                return log_msg_part, dmg
+            
             # =====================
-            # 🔹 직업 분기
+            # 🔹 직업 분기 (누적 데미지 로직 적용)
             # =====================
             if job == "저격수":
-                if target2:  # ✅ 3번 수정: 저격수는 반드시 한 명만
+                if target2:
                     await interaction.followup.send("❌ 저격수는 반드시 한 명만 지정해야 합니다!")
                     return
+                
                 result_msg = f"🏹 저격수 {username}님의 더블샷 발동!\n"
                 for i in range(2):
-                    msg, dmg = shoot_arrow(target1_row[0], target1_row[1], target1, is_first=(i == 0), is_sniper=True)
+                    msg, dmg = apply_shot(target1_id, is_first_hit=(i == 0), is_sniper=True)
                     damage_logs.append(f"🎯 저격 {i+1}타: {msg}")
-                    cm = check_counter(user_id, username, str(target1.id), target1.mention, dmg)
-                    if cm: counter_msgs.append(cm)
 
             elif job == "연사수":
                 result_msg = f"🏹 연사수 {username}님의 더블샷 발동!\n"
-                msg, dmg = shoot_arrow(target1_row[0], target1_row[1], target1, is_first=True)
+                
+                # 1타 (target1)
+                msg, dmg = apply_shot(target1_id, is_first_hit=True)
                 damage_logs.append(f"🏹 1타: {msg}")
-                cm = check_counter(user_id, username, str(target1.id), target1.mention, dmg)
-                if cm: counter_msgs.append(cm)
 
-                if target2_row:
-                    msg, dmg = shoot_arrow(target2_row[0], target2_row[1], target2, is_first=True)
+                # 2타 (target2)
+                if target2 and target2_row:
+                    msg, dmg = apply_shot(str(target2.id), is_first_hit=True)
                     damage_logs.append(f"🏹 2타: {msg}")
-                    cm = check_counter(user_id, username, str(target2.id), target2.mention, dmg)
-                    if cm: counter_msgs.append(cm)
 
+                # 추가 연사 (candidates) - 로직 유지
                 if candidates:
                     rand_idx, rand_data = random.choice(candidates)
                     rand_id = str(rand_data.get("유저 ID"))
                     rand_obj = discord.Object(id=int(rand_id))
-                    msg, dmg = shoot_arrow(rand_idx, rand_data, rand_obj, is_first=False)
+                    
+                    # targets_info에 임시로 추가 (이 공격만 끝나면 사라짐)
+                    targets_info[rand_id] = [rand_idx, rand_data, 0, rand_obj] 
+                    
+                    # apply_shot은 targets_info를 사용하지만, 최종 업데이트 로직이 끝난 후 이 키는 사라지므로 문제 없음
+                    msg, dmg = apply_shot(rand_id, is_first_hit=False) 
                     damage_logs.append(f"⚡ 추가 연사: {msg}")
-                    cm = check_counter(user_id, username, rand_id, f"<@{rand_id}>", dmg)
-                    if cm: counter_msgs.append(cm)
 
-            else:  # 기본 궁수
+                    # 임시로 추가한 랜덤 대상은 최종 업데이트 전에 제거하는 것이 깔끔함
+                    del targets_info[rand_id]
+
+
+            else:  # 기본 궁수 및 카피닌자
                 result_msg = f"🏹 궁수 {username}님의 더블샷 발동!\n"
-                # ✅ 3번 수정: target2 없으면 같은 대상 두 번
-                if not target2_row:
-                    target2_row, target2 = target1_row, target1
-
-                msg, dmg = shoot_arrow(target1_row[0], target1_row[1], target1, is_first=True)
+                
+                # 1타 (target1)
+                msg, dmg = apply_shot(target1_id, is_first_hit=True)
                 damage_logs.append(f"🏹 1타: {msg}")
-                cm = check_counter(user_id, username, str(target1.id), target1.mention, dmg)
-                if cm: counter_msgs.append(cm)
 
-                msg, dmg = shoot_arrow(target2_row[0], target2_row[1], target2, is_first=True)
+                # 2타 대상 설정 (target2 없으면 target1)
+                target2_id = str(target2.id) if target2 else target1_id
+                
+                # 2타: target1과 같아도 targets_info에 누적 데미지가 합산됨
+                msg, dmg = apply_shot(target2_id, is_first_hit=False) 
                 damage_logs.append(f"🏹 2타: {msg}")
-                cm = check_counter(user_id, username, str(target2.id), target2.mention, dmg)
-                if cm: counter_msgs.append(cm)
+
+            
+            # =====================
+            # ⭐ 3. 최종 시트 업데이트 ⭐ (모든 공격의 누적 데미지 반영)
+            # =====================
+            update_cells = []
+            
+            for target_id, (idx, data, total_dmg, obj) in targets_info.items():
+                if total_dmg > 0:
+                    # 로드된 데이터의 경험치 값을 사용 (가장 최근 동기화된 값)
+                    current_exp = safe_int(data.get("현재레벨경험치", 0)) 
+                    new_exp = current_exp - total_dmg
+                    
+                    # 일괄 업데이트 목록에 추가 (K열은 11번째 컬럼)
+                    update_cells.append({
+                        "range": f"K{idx}",
+                        "values": [[new_exp]]
+                    })
+                    
+            if update_cells:
+                # 단일 API 호출로 모든 경험치 변경사항 반영
+                sheet.batch_update(update_cells, value_input_option="USER_ENTERED")
+
 
             # 로그 기록
             self.log_skill_use(user_id, username, "더블샷", "; ".join(damage_logs))
@@ -173,11 +246,9 @@ class Archer(commands.Cog):
             if counter_msgs:
                 result_msg += "\n" + "\n".join(counter_msgs)
 
-            # ✅ 성공 시 공개 메시지
             await interaction.followup.send(result_msg)
 
         except Exception as e:
-            # 예외 처리: 비공개로 출력
             await interaction.edit_original_response(content=f"❌ 오류 발생: {e}")
 
 async def setup(bot):
