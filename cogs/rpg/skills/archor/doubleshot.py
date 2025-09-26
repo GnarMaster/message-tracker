@@ -3,8 +3,11 @@ from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
 import random
-# utils에서 필요한 함수들을 그대로 임포트합니다.
+import os
 from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter
+
+# PVP 채널 ID 불러오기
+PVP_CHANNEL_ID = int(os.getenv("PVP_CHANNEL_ID", 0))
 
 class Archer(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -77,6 +80,14 @@ class Archer(commands.Cog):
         description="궁수 전용 스킬: 지정 2명에게 연속 사격 (쿨타임 4시간)"
     )
     async def 더블샷(self, interaction: discord.Interaction, target1: discord.Member, target2: discord.Member = None):
+        
+        # ✅ PVP 채널 제한
+        if interaction.channel.id != PVP_CHANNEL_ID:
+            await interaction.response.send_message(
+                "❌ 이 명령어는 PVP 채널에서만 사용할 수 있습니다.",
+                ephemeral=True
+            )
+            return
         user_id = str(interaction.user.id)
         username = interaction.user.name
 
