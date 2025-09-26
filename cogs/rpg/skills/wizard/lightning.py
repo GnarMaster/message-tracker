@@ -5,6 +5,9 @@ from datetime import datetime, timedelta
 import random
 from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter
 
+# PVP 채널 ID 불러오기
+PVP_CHANNEL_ID = int(os.getenv("PVP_CHANNEL_ID", 0))
+
 class Mage(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -40,6 +43,13 @@ class Mage(commands.Cog):
         description="마법사 전용 스킬: 지정 1명 + 랜덤 1명 동시 공격 이후 연쇄 공격 (쿨타임 4시간)"
     )
     async def 체라(self, interaction: discord.Interaction, target: discord.Member):
+        # ✅ PVP 채널 제한
+        if interaction.channel.id != PVP_CHANNEL_ID:
+            await interaction.response.send_message(
+                "❌ 이 명령어는 PVP 채널에서만 사용할 수 있습니다.",
+                ephemeral=True
+            )
+            return
         user_id = str(interaction.user.id)
         username = interaction.user.name
         target_id = str(target.id)
