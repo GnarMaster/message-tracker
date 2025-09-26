@@ -3,7 +3,10 @@ from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
 import random
+import os
 from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter, add_counter_buff
+# PVP 채널 ID 불러오기
+PVP_CHANNEL_ID = int(os.getenv("PVP_CHANNEL_ID", 0))
 
 class ThreeHits(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -40,6 +43,13 @@ class ThreeHits(commands.Cog):
         description="전사 전용 스킬: 점점 낮아지는 확률로 3연속 공격을 시도합니다. (쿨타임 4시간)"
     )
     async def 삼연격(self, interaction: discord.Interaction, target: discord.Member):
+        # ✅ PVP 채널 제한
+        if interaction.channel.id != PVP_CHANNEL_ID:
+            await interaction.response.send_message(
+                "❌ 이 명령어는 PVP 채널에서만 사용할 수 있습니다.",
+                ephemeral=True
+            )
+            return
         user_id = str(interaction.user.id)
         username = interaction.user.name
         target_id = str(target.id)
