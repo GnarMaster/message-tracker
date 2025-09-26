@@ -32,13 +32,14 @@ class ShopSelect(discord.ui.Select):
         super().__init__(placeholder="구매할 아이템을 선택하세요", options=options)
 
     async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer() 
         if str(interaction.user.id) != self.user_id:
-            await interaction.response.send_message("❌ 본인만 이용할 수 있습니다.", ephemeral=True)
+            await interaction.followup.send("❌ 본인만 이용할 수 있습니다.", ephemeral=True)
             return
 
         selected_item = get_item_by_name(self.values[0])
         if not selected_item:
-            await interaction.response.send_message("⚠️ 알 수 없는 아이템입니다.", ephemeral=True)
+            await interaction.followup.send("⚠️ 알 수 없는 아이템입니다.", ephemeral=True)
             return
 
         sheet = get_sheet()
@@ -46,7 +47,7 @@ class ShopSelect(discord.ui.Select):
 
         # ✅ 골드 부족 체크
         if current_gold < selected_item["price"]:
-            await interaction.response.send_message("💰 골드가 부족합니다.", ephemeral=True)
+            await interaction.followup.send("💰 골드가 부족합니다.", ephemeral=True)
             return
 
         new_gold = current_gold - selected_item["price"]
