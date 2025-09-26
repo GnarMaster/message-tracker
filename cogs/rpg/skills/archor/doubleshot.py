@@ -165,7 +165,7 @@ class Archer(commands.Cog):
             # =====================
             if job == "저격수":
                 if target2:
-                    await interaction.followup.send("❌ 저격수는 반드시 한 명만 지정해야 합니다!")
+                    await interaction.followup.send("❌ 저격수는 반드시 한 명만 지정해야 합니다!",ephemeral=True)
                     return
                 
                 result_msg = f"🏹 저격수 {username}님의 더블샷 발동!\n"
