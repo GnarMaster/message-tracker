@@ -123,12 +123,9 @@ class Mage(commands.Cog):
             # ======================
             # 🔹 기본 데미지
             # ======================
-            if random.randint(1, 100) <= 10:
-                base_damage = 20 + (level * 2)
-                msg_base = "🔥 대성공!!!"
-            else:
-                base_damage = 10 + level
-                msg_base = "✅ 성공"
+
+            base_damage = 10 + level
+            msg_base = "✅ 성공"
 
             damage_logs = []
             counter_msgs = []
