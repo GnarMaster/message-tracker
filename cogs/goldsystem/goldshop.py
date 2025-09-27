@@ -3,18 +3,22 @@ from discord.ext import commands
 from discord import app_commands
 from utils import get_sheet, safe_int
 from inventory_utils import add_item
+import random
 
 # 🛒 상점 아이템 리스트
 SHOP_ITEMS = [
     {"name": "직업변경권", "price": 200, "desc": "직업을 변경할 수 있는 특별한 권한"},
     {"name": "5천원 상품권", "price": 5000, "desc": "관리자가 직접 지급하는 리워드"},
+    {"name": "경험치 구매권", "price": 100, "desc": "100~300 랜덤 EXP를 획득합니다"}
 ]
+
 
 def get_item_by_name(name: str):
     for item in SHOP_ITEMS:
         if item["name"] == name:
             return item
     return None
+
 
 class ShopSelect(discord.ui.Select):
     def __init__(self, user_id, row_idx, user_data):
@@ -32,7 +36,7 @@ class ShopSelect(discord.ui.Select):
         super().__init__(placeholder="구매할 아이템을 선택하세요", options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer() 
+        await interaction.response.defer()
         if str(interaction.user.id) != self.user_id:
             await interaction.followup.send("❌ 본인만 이용할 수 있습니다.", ephemeral=True)
             return
@@ -53,21 +57,36 @@ class ShopSelect(discord.ui.Select):
         new_gold = current_gold - selected_item["price"]
         sheet.update_cell(self.row_idx, 13, new_gold)  # 13번째 열이 '골드'
 
-        # ✅ 인벤토리에 추가
-        add_item(self.user_id, interaction.user.name, selected_item["name"], 1)
+        if selected_item["name"] == "경험치 구매권":
+            gained_exp = random.randint(100, 300)
+            current_exp = safe_int(self.user_data.get("현재레벨경험치", 0))
+            new_exp = current_exp + gained_exp
+            sheet.update_cell(self.row_idx, 11, new_exp)
 
-        await interaction.followup.send(
-            f"✅ {selected_item['name']} 구매 완료!\n"
-            f"💰 남은 골드: {new_gold}\n"
-            f"🎒 아이템이 인벤토리에 추가되었습니다.",
-            ephemeral=True
-        )
+            await interaction.followup.send(
+                f"✨ 경험치 구매권 사용 완료!\n"
+                f"⭐ {gained_exp} EXP 획득!\n"
+                f"📊 현재 경험치: {new_exp}\n"
+                f"💰 남은 골드: {new_gold}",
+                ephemeral=True
+            )
+        else:
+            # ✅ 인벤토리에 추가
+            add_item(self.user_id, interaction.user.name, selected_item["name"], 1)
+
+            await interaction.followup.send(
+                f"✅ {selected_item['name']} 구매 완료!\n"
+                f"💰 남은 골드: {new_gold}\n"
+                f"🎒 아이템이 인벤토리에 추가되었습니다.",
+                ephemeral=True
+            )
 
 
 class ShopView(discord.ui.View):
     def __init__(self, user_id, row_idx, user_data):
         super().__init__(timeout=30)
         self.add_item(ShopSelect(user_id, row_idx, user_data))
+
 
 class Shop(commands.Cog):
     def __init__(self, bot):
@@ -93,6 +112,7 @@ class Shop(commands.Cog):
         row_idx, user_data = user_row
         view = ShopView(user_id, row_idx, user_data)
         await interaction.followup.send("🛒 골드상점에 오신 것을 환영합니다!", view=view, ephemeral=True)
+
 
 async def setup(bot):
     await bot.add_cog(Shop(bot))
