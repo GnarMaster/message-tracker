@@ -139,12 +139,13 @@ class WeaponCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="무기상태", description="내 무기 상태를 확인합니다.")
-    async def 무기상태(self, interaction: discord.Interaction):
+    @app_commands.command(name="무기", description="내 무기 상태를 확인하고 강화합니다.")
+    async def 무기(self, interaction: discord.Interaction):
         if interaction.channel_id != FORGE_CHANNEL_ID:
             await interaction.response.send_message("❌ 이 명령어는 대장간 채널에서만 사용할 수 있습니다.", ephemeral=True)
             return
 
+        # ✅ defer는 맨 앞에서 호출
         await interaction.response.defer(ephemeral=True)
 
         user_id = str(interaction.user.id)
