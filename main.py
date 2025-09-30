@@ -821,8 +821,9 @@ async def 랭킹정산(interaction: discord.Interaction):
     print("📌 [/랭킹정산] 명령어 실행됨 (by:", interaction.user.id, ")")
 
     try:
+        await interaction.response.defer()
         # ✅ 바로 응답 (에러 방지용)
-        await interaction.response.send_message("⏳ 랭킹 정산을 시작합니다...")
+        await interaction.followup.send("⏳ 랭킹 정산을 시작합니다...")
 
         print("📌 send_monthly_stats() 실행 시작")
         await send_monthly_stats()
