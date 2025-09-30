@@ -23,7 +23,7 @@ ENHANCE_TABLE = {
 
 
 def get_weapon_sheet():
-    sheet = get_sheet().spreadsheet
+    sheet = get_sheet()
     try:
         return sheet.worksheet("Weapon")
     except:
@@ -58,7 +58,7 @@ def update_weapon(idx, stage, atk):
 
 def get_gold(user_id: str):
     """시트1에서 골드(13열) 불러오기"""
-    sheet = get_sheet().worksheet("시트1")
+    sheet = get_sheet()
     records = sheet.get_all_records()
     for idx, row in enumerate(records, start=2):
         if str(row.get("유저 ID", "")) == str(user_id):
@@ -68,7 +68,7 @@ def get_gold(user_id: str):
 
 def update_gold(idx, new_gold):
     """시트1의 13열(골드) 업데이트"""
-    sheet = get_sheet().worksheet("시트1")
+    sheet = get_sheet()
     sheet.update_cell(idx, 13, new_gold)
 
 
