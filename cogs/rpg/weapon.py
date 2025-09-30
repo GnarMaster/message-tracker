@@ -71,10 +71,20 @@ def update_gold(idx, new_gold):
 # ⚔️ 강화 View
 class ForgeView(discord.ui.View):
     def __init__(self, bot, user_id, nickname):
-        super().__init__(timeout=30)
+        super().__init__(timeout=360)  # 6분
         self.bot = bot
         self.user_id = user_id
         self.nickname = nickname
+        self.message: discord.Message | None = None  # 나중에 연결
+
+    async def start_delete_timer(self):
+        """5분 후 메시지 삭제"""
+        await asyncio.sleep(300)  # 5분
+        try:
+            if self.message:
+                await self.message.delete()
+        except Exception as e:
+            print(f"❗ 무기 메시지 삭제 실패: {e}")
 
     @discord.ui.button(label="강화하기", style=discord.ButtonStyle.primary)
     async def enhance(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -82,10 +92,9 @@ class ForgeView(discord.ui.View):
             await interaction.response.send_message("❌ 당신의 무기가 아닙니다!", ephemeral=True)
             return
 
-        # ✅ Interaction 응답 확보 (중복 응답 방지)
         await interaction.response.defer()
 
-        # 버튼 잠금 (연속 클릭 방지)
+        # 버튼 잠금
         for item in self.children:
             item.disabled = True
         await interaction.message.edit(view=self)
@@ -97,16 +106,18 @@ class ForgeView(discord.ui.View):
         g_idx, gold = get_gold(self.user_id)
 
         if stage >= 10:
-            return  # 이미 만렙이면 그냥 종료
+            return  # 이미 만렙이면 종료
 
         succ, fail, destroy, cost, new_atk = ENHANCE_TABLE.get(stage+1, (0,0,0,0,atk))
         if gold < cost:
             await interaction.followup.send(
                 f"💰 골드 부족! 필요: {cost}G (보유 {gold}G)", ephemeral=True
             )
-            # 버튼은 다시 원래대로 활성화
+            # 버튼 다시 활성화
             new_view = ForgeView(self.bot, self.user_id, self.nickname)
-            await interaction.message.edit(view=new_view)
+            msg = await interaction.message.edit(view=new_view)
+            new_view.message = msg
+            asyncio.create_task(new_view.start_delete_timer())
             return  
 
         # 골드 차감
@@ -138,13 +149,13 @@ class ForgeView(discord.ui.View):
             update_weapon(idx, 1, 1)
             result_text = "💥 무기 파괴! 1강으로 초기화되었습니다."
 
-        # 강화 후 최신 상태 다시 불러오기
+        # 강화 후 최신 상태 불러오기
         _, row = ensure_weapon(self.user_id, self.nickname)
         stage = safe_int(row.get("무기강화상태", 1))
         atk = safe_int(row.get("무기공격력", 1))
         _, gold = get_gold(self.user_id)
 
-        # 새로운 embed 생성
+        # 새로운 embed
         embed = discord.Embed(title="⚒️ 무기 상태", color=discord.Color.orange())
         embed.add_field(name="닉네임", value=self.nickname, inline=True)
         embed.add_field(name="강화 단계", value=f"{stage}강", inline=True)
@@ -166,8 +177,11 @@ class ForgeView(discord.ui.View):
             embed.add_field(name="상태", value="최대 강화 완료!", inline=False)
             new_view = None
 
-        # 메시지 갱신 (embed + 버튼 새로고침)
-        await interaction.message.edit(embed=embed, view=new_view)
+        # 메시지 갱신
+        msg = await interaction.message.edit(embed=embed, view=new_view)
+        if new_view:
+            new_view.message = msg
+            asyncio.create_task(new_view.start_delete_timer())
 
 
 # ⚔️ Cog
@@ -181,7 +195,7 @@ class WeaponCog(commands.Cog):
             await interaction.response.send_message("❌ 이 명령어는 대장간 채널에서만 사용할 수 있습니다.", ephemeral=True)
             return
 
-        await interaction.response.defer()  # 공개 메시지용 defer
+        await interaction.response.defer()
 
         user_id = str(interaction.user.id)
         nickname = interaction.user.name
@@ -210,7 +224,10 @@ class WeaponCog(commands.Cog):
             embed.add_field(name="상태", value="최대 강화 완료!", inline=False)
             view = None
 
-        await interaction.followup.send(embed=embed, view=view)  # 공개 메시지
+        msg = await interaction.followup.send(embed=embed, view=view)
+        if view:
+            view.message = msg
+            asyncio.create_task(view.start_delete_timer())
 
 
 async def setup(bot):
