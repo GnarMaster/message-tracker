@@ -82,6 +82,9 @@ class ForgeView(discord.ui.View):
             await interaction.response.send_message("❌ 당신의 무기가 아닙니다!", ephemeral=True)
             return
 
+        # ✅ Interaction 응답 확보 (중복 응답 방지)
+        await interaction.response.defer()
+
         # 버튼 잠금 (연속 클릭 방지)
         for item in self.children:
             item.disabled = True
@@ -94,19 +97,15 @@ class ForgeView(discord.ui.View):
         g_idx, gold = get_gold(self.user_id)
 
         if stage >= 10:
-            await interaction.response.send_message("⚠️ 이미 10강 만렙입니다!", ephemeral=True)
-            return
+            return  # 이미 만렙이면 그냥 종료
 
         succ, fail, destroy, cost, new_atk = ENHANCE_TABLE.get(stage+1, (0,0,0,0,atk))
         if gold < cost:
-            await interaction.response.send_message(f"💰 골드 부족! 필요: {cost}G (보유 {gold}G)", ephemeral=True)
-            return
+            return  # 골드 부족 시 아무 변화 없음
 
         # 골드 차감
         update_gold(g_idx, gold - cost)
 
-        # 진행중 표시
-        await interaction.response.send_message("강화 중… 🔨", ephemeral=True)
         await asyncio.sleep(1.5)
 
         # 강화 판정
@@ -176,7 +175,7 @@ class WeaponCog(commands.Cog):
             await interaction.response.send_message("❌ 이 명령어는 대장간 채널에서만 사용할 수 있습니다.", ephemeral=True)
             return
 
-        await interaction.response.defer()  # 🔑 공개 메시지용 defer
+        await interaction.response.defer()  # 공개 메시지용 defer
 
         user_id = str(interaction.user.id)
         nickname = interaction.user.name
