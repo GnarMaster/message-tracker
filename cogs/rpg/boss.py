@@ -20,7 +20,8 @@ BOSS_INTRO_MESSAGES = [
     "🌪️ 폭풍이 몰아치며 그림자가 형체를 이룬다!",
     "🩸 핏빛 안개 속에서 괴성이 울려퍼진다!",
     "🌌 차원의 균열이 열리며 괴물이 걸어나온다!",
-    "☠️ 이 땅에 재앙이 깃든다... 보스가 등장했다!"
+    "☠️ 이 땅에 재앙이 깃든다... 보스가 등장했다!",
+    "❓ 얘가 왜 보스임 ❓"
 ]
 
 class Boss(commands.Cog):
@@ -297,19 +298,53 @@ class Boss(commands.Cog):
         sheet=get_sheet(); records=sheet.get_all_records()
         boss_name=boss.get("보스이름","???")
         ranking=sorted(attack_dict.items(), key=lambda x:-x[1])
+        # ✅ 보상표 (EXP, GOLD)
+        reward_table = {
+            "last_hit": (100, 100),
+            "1st": (75, 75),
+            "2nd": (60, 60),
+            "3rd": (50, 50),
+            "participant": (25, 25)
+        }
+        
         rewards={}
-        if len(ranking)>=1: rewards[ranking[0][0]]=150
-        if len(ranking)>=2: rewards[ranking[1][0]]=125
-        if len(ranking)>=3: rewards[ranking[2][0]]=100
-        rewards[last_attacker]=rewards.get(last_attacker,0)+200
+        
+        if len(ranking) >= 1:
+            rewards[ranking[0][0]] = reward_table["1st"]
+        if len(ranking) >= 2:
+            rewards[ranking[1][0]] = reward_table["2nd"]
+        if len(ranking) >= 3:
+            rewards[ranking[2][0]] = reward_table["3rd"]
+            
+         # 막타 보상 추가 (겹치면 누적)
+        if last_attacker in rewards:
+            exp, gold = rewards[last_attacker]
+            le, lg = reward_table["last_hit"]
+            rewards[last_attacker] = (exp + le, gold + lg)
+        else:
+            rewards[last_attacker] = reward_table["last_hit"]
+            
+        # 기타 참여자
         for uid in attack_dict:
-            if uid not in rewards: rewards[uid]=50
-        for idx,row in enumerate(records,start=2):
-            uid=str(row.get("유저 ID",""))
+            if uid not in rewards:
+                rewards[uid] = reward_table["participant"]
+        # ✅ 시트 업데이트
+        for idx, row in enumerate(records, start=2):
+            uid = str(row.get("유저 ID", ""))
             if uid in rewards:
-                exp=safe_int(row.get("현재레벨경험치",0))
-                sheet.update_cell(idx,11,exp+rewards[uid])
+                exp, gold = rewards[uid]
+                current_exp = safe_int(row.get("현재레벨경험치", 0))
+                current_gold = safe_int(row.get("골드", 0))
+
+                new_exp = current_exp + exp
+                new_gold = current_gold + gold
+
+                sheet.update_cell(idx, 11, new_exp)  # K열 = 경험치
+                sheet.update_cell(idx, 13, new_gold) # M열 = 골드 (구조 확인 필요)
+
+        #보스 시트 초기화
         self.get_boss_sheet().update_cell(2,3,0)
+        
         history=self.get_history_sheet()
         try: last_user=await interaction.client.fetch_user(int(last_attacker)); last_name=last_user.name
         except: last_name="Unknown"
@@ -325,11 +360,17 @@ class Boss(commands.Cog):
             boss_name,boss.get("HP_MAX",0),boss.get("소환일시",""),datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             last_attacker,last_name,rank_info[0],rank_info[1],rank_info[2],rank_info[3],rank_info[4],rank_info[5],max(0,len(attack_dict)-3)
         ])
-        msg=f"🎉 보스 **{boss_name}** 쓰러짐!\n\n🏆 누적 데미지 랭킹:\n"
-        medals=["🥇","🥈","🥉"]; base=[150,125,100]
-        for i,(uid,dmg) in enumerate(ranking[:3]):
-            msg+=f"{medals[i]} <@{uid}> ({dmg} 피해) +{base[i]} EXP\n"
-        msg+=f"\n⚔️ 막타: <@{last_attacker}> +200 EXP\n🙌 기타 참여자 전원 +50 EXP"
-        await interaction.followup.send(msg)
+        # ✅ 출력 메시지
+        msg += f"\n⚔️ 막타: <@{last_attacker}> → +100 EXP, +100 GOLD\n"
+        msg = f"🎉 보스 **{boss_name}** 쓰러짐!\n\n🏆 누적 데미지 랭킹:\n"
+        medals = ["🥇", "🥈", "🥉"]
+        exp_list = [75, 60, 50]
+        gold_list = [75, 60, 50]
+        for i, (uid, dmg) in enumerate(ranking[:3]):
+            msg += f"{medals[i]} <@{uid}> ({dmg} 피해) → +{exp_list[i]} EXP, +{gold_list[i]} GOLD\n"
 
+        msg += f"🙌 기타 참여자 전원 → +25 EXP, +25 GOLD"
+
+        await interaction.followup.send(msg)
+        
 async def setup(bot): await bot.add_cog(Boss(bot))
