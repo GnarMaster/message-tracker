@@ -811,18 +811,17 @@ async def send_birthday_congrats():
 @tree.command(name="랭킹정산", description="이번 달 메시지 랭킹을 수동으로 정산합니다. (고윤서전용)")
 async def 랭킹정산(interaction: discord.Interaction):
     admin_id = 648091499887591424  # 본인 Discord ID
+    await interaction.response.defer() 
+    print("📌 [/랭킹정산] 명령어 실행됨 (by:", interaction.user.id, ")")
+    
     if interaction.user.id != admin_id:
-        await interaction.response.send_message(
+        await interaction.followup.send(
             "❌ 이 명령어는 고윤서만 사용할 수 있어요!",
             ephemeral=True
         )
         return
 
-    print("📌 [/랭킹정산] 명령어 실행됨 (by:", interaction.user.id, ")")
-
     try:
-        await interaction.response.defer()
-        # ✅ 바로 응답 (에러 방지용)
         await interaction.followup.send("⏳ 랭킹 정산을 시작합니다...")
 
         print("📌 send_monthly_stats() 실행 시작")
