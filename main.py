@@ -485,7 +485,7 @@ async def 내레벨(interaction: discord.Interaction):
 # ✅ 랭킹정산
 async def send_monthly_stats():
     try:
-        await sync_cache_to_sheet()
+        # await sync_cache_to_sheet()
         sheet = get_sheet()
         spreadsheet = sheet.spreadsheet
         records = sheet.get_all_records()
