@@ -101,7 +101,13 @@ class ForgeView(discord.ui.View):
 
         succ, fail, destroy, cost, new_atk = ENHANCE_TABLE.get(stage+1, (0,0,0,0,atk))
         if gold < cost:
-            return  # 골드 부족 시 아무 변화 없음
+            await interaction.followup.send(
+                f"💰 골드 부족! 필요: {cost}G (보유 {gold}G)", ephemeral=True
+            )
+            # 버튼은 다시 원래대로 활성화
+            new_view = ForgeView(self.bot, self.user_id, self.nickname)
+            await interaction.message.edit(view=new_view)
+            return  
 
         # 골드 차감
         update_gold(g_idx, gold - cost)
@@ -143,12 +149,12 @@ class ForgeView(discord.ui.View):
         embed.add_field(name="닉네임", value=self.nickname, inline=True)
         embed.add_field(name="강화 단계", value=f"{stage}강", inline=True)
         embed.add_field(name="무기 공격력", value=str(atk), inline=True)
-        embed.add_field(name="보유 골드", value=f"{gold}G", inline=True)
         embed.add_field(name="결과", value=result_text, inline=False)
 
         if stage < 10:
             succ, fail, destroy, cost, new_atk = ENHANCE_TABLE[stage+1]
             embed.add_field(name="다음 단계", value=f"{stage+1}강", inline=True)
+            embed.add_field(name="다음 무기 공격력", value=str(new_atk), inline=True)
             embed.add_field(name="성공확률", value=f"{succ*100:.1f}%", inline=True)
             if fail > 0:
                 embed.add_field(name="실패확률", value=f"{fail*100:.1f}%", inline=True)
