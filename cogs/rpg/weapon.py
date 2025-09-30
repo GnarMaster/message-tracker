@@ -83,6 +83,12 @@ class ForgeView(discord.ui.View):
 
         await interaction.response.defer(ephemeral=True)
 
+        # ✅ 원본 메시지 삭제
+        try:
+            await interaction.message.delete()
+        except:
+            pass
+
         idx, row = ensure_weapon(self.user_id, self.nickname)
         stage = safe_int(row.get("무기강화상태", 1))
         atk = safe_int(row.get("무기공격력", 1))
