@@ -194,11 +194,11 @@ class WeaponCog(commands.Cog):
         embed.add_field(name="닉네임", value=nickname, inline=True)
         embed.add_field(name="강화 단계", value=f"{stage}강", inline=True)
         embed.add_field(name="무기 공격력", value=str(atk), inline=True)
-        embed.add_field(name="보유 골드", value=f"{gold}G", inline=True)
 
         if stage < 10:
             succ, fail, destroy, cost, new_atk = ENHANCE_TABLE[stage+1]
             embed.add_field(name="다음 단계", value=f"{stage+1}강", inline=True)
+            embed.add_field(name="다음 무기 공격력", value=str(new_atk), inline=True)
             embed.add_field(name="성공확률", value=f"{succ*100:.1f}%", inline=True)
             if fail > 0:
                 embed.add_field(name="실패확률", value=f"{fail*100:.1f}%", inline=True)
