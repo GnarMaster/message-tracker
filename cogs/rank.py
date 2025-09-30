@@ -12,7 +12,7 @@ class Rank(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    # 🔹 지난달 랭킹 정산
+    # 🔹 지난달 랭킹 정산 함수
     async def send_monthly_stats(self):
         try:
             sheet = get_sheet()
@@ -26,6 +26,7 @@ class Rank(commands.Cog):
             results = []
             medals = ["🥇", "🥈", "🥉"]
 
+            # ✅ 메시지 랭킹용 데이터 수집
             for row in records:
                 try:
                     uid_raw = str(row.get("유저 ID", "0")).strip()
@@ -53,7 +54,7 @@ class Rank(commands.Cog):
             for i, (uid, count, username) in enumerate(sorted_results[:3], 1):
                 msg += f"{i}. {username} - {count}개\n"
 
-            # ⭐ 레벨 랭킹 (추가)
+            # ⭐ 레벨 랭킹
             level_ranking = sorted(
                 [(r.get("유저 ID"), safe_int(r.get("레벨", 1)), safe_int(r.get("현재레벨경험치", 0)), r.get("닉네임"))
                  for r in records if str(r.get("유저 ID")).isdigit()],
@@ -63,13 +64,13 @@ class Rank(commands.Cog):
             for i, (uid, level, exp, username) in enumerate(level_ranking[:3], 1):
                 msg += f"{i}. {username} - Lv.{level} ({exp} exp)\n"
 
+            # 🎁 보상 안내
             prizes = [15000, 10000, 5000]
             msg += "\n🎁 지난 시즌 보상 (상품권)\n"
             for i, (uid, level, exp, username) in enumerate(level_ranking[:3], 1):
                 prize = prizes[i-1]
-                msg += f"{medals[i-1]} {i}등: @{uid} → {prize:,}원 상품권 지급\n"
+                msg += f"{medals[i-1]} {i}등: <@{uid}> → {prize:,}원 상품권 지급\n"
 
-            # 안내 멘트
             msg += (
                 "\n🎉 1~3등을 축하합니다! 상품은 관리자에 의해 지급됩니다.\n\n"
                 "📢 새로운 시즌이 시작되었습니다!\n"
@@ -101,7 +102,7 @@ class Rank(commands.Cog):
             except Exception as e:
                 print(f"❗ 백업 시트 작업 실패: {e}")
 
-            # ✅ Sheet1 초기화 (유저 ID, 닉네임, 골드 유지 / 나머지는 0으로)
+            # ✅ Sheet1 초기화 (유저 ID, 닉네임, 골드 유지 / 나머지는 초기화)
             header = sheet.row_values(1)
             reset_data = []
             for row in records:
@@ -132,23 +133,24 @@ class Rank(commands.Cog):
             traceback.print_exc()
 
     # 🔹 /랭킹정산 명령어
-    @app_commands.command(name="랭킹정산", description="이번 달 메시지 랭킹을 수동으로 정산합니다. (관리자 전용)")
+    @app_commands.command(name="랭킹정산", description="이번 달 메시지 랭킹을 수동으로 정산합니다. (고윤서전용)")
     async def 랭킹정산(self, interaction: discord.Interaction):
-        admin_id = 648091499887591424  # 👉 본인 ID
-
+        admin_id = 648091499887591424
         if interaction.user.id != admin_id:
-            await interaction.response.send_message("❌ 이 명령어는 관리자만 실행할 수 있습니다.", ephemeral=True)
+            await interaction.response.send_message("❌ 이 명령어는 고윤서만 사용할 수 있어요!", ephemeral=True)
             return
 
         print(f"📌 [/랭킹정산] 실행 by {interaction.user.id}")
-        await interaction.response.defer()  # ✅ interaction 만료 방지
+        await interaction.response.send_message("⏳ 랭킹 정산을 시작합니다... (몇 초 걸릴 수 있어요)")
+
         try:
             await self.send_monthly_stats()
             await interaction.followup.send("✅ 랭킹 정산이 완료되었습니다!")
         except Exception as e:
-            print("❌ 랭킹정산 실행 중 오류:", e)
+            print("❌ send_monthly_stats 실행 중 에러:", e)
             traceback.print_exc()
             await interaction.followup.send("⚠️ 랭킹 정산 중 오류 발생")
 
+# 🔹 Cog 등록
 async def setup(bot: commands.Bot):
     await bot.add_cog(Rank(bot))
