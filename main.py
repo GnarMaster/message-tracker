@@ -44,7 +44,6 @@ def set_last_run_date_to_sheet(date_str):
     except Exception as e:
         print(f"❗ set_last_run_date_to_sheet 에러: {e}")
 
-
 # 생일축하했는지 확인하는 함수
 def get_last_birthday_run():
     try:
@@ -55,7 +54,6 @@ def get_last_birthday_run():
     except Exception as e:
         print(f"❗ get_last_birthday_run 에러: {e}")
     return ""
-
 
 def set_last_birthday_run(date_str):
     try:
@@ -95,10 +93,8 @@ def format_exp(value: float) -> str:
         return str(int(value))
     return f"{value:.1f}"    # 소숫점 1자리까지
 
-
 # ✅ 로컬 캐시
 DATA_FILE = "message_data.json"
-
 
 def load_data():
     if os.path.exists(DATA_FILE):
@@ -106,18 +102,15 @@ def load_data():
             return json.load(f)
     return {}
 
-
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f)
-
 
 # ✅ message_log 초기화
 message_log = {}
 detail_log = {}
 user_levels = {}
 # ✅ 서버 시작시
-
 
 @bot.event
 async def on_ready():
@@ -188,9 +181,8 @@ async def on_message(message):
 
     save_data(message_log)
     await bot.process_commands(message)
+    
 # 요구 경험치
-
-
 def exp_needed_for_next_level(level: int) -> int:
 
     if level < 5:
@@ -206,7 +198,6 @@ def exp_needed_for_next_level(level: int) -> int:
     else:
         # 50 이상 → 급격히 상승
         return int(5 * (level ** 2) + level * 20 + 1000)
-
 
 # ✅ 캐시를 구글시트에 합산 저장
 async def sync_cache_to_sheet():
@@ -491,7 +482,7 @@ async def 내레벨(interaction: discord.Interaction):
         print(f"❗ /내레벨 에러: {e}")
         await interaction.followup.send("⚠️ 정보를 불러오는 데 실패했습니다.")
 
-# ✅ 매달 1일 1등 축하
+# ✅ 랭킹정산
 async def send_monthly_stats():
     try:
         await sync_cache_to_sheet()
@@ -527,20 +518,36 @@ async def send_monthly_stats():
             print("❗ 채널을 찾을 수 없음")
             return
         
-        msg = f"📊 {year}년 {month}월 메시지 랭킹\n\n"
+        msg = f"📊 {year}년 {month}월 시즌 최종 랭킹\n\n"
         # 메시지 TOP3
         msg += "📝 메시지 랭킹 TOP 3\n"
         for i, (uid, count, username) in enumerate(sorted_results[:3], 1):
             msg += f"{i}. {username} - {count}개\n"
-
+    
         level_ranking = sorted(
             [(r.get("유저 ID"), safe_int(r.get("레벨", 1)), safe_int(r.get("현재레벨경험치", 0)), r.get("닉네임")) 
              for r in records if str(r.get("유저 ID")).isdigit()],
             key=lambda x: (-x[1], -x[2])
         )
+        # 레벨 TOP3
         msg += "\n⭐ 레벨 랭킹 TOP 3\n"
         for i, (uid, level, exp, username) in enumerate(level_ranking[:3], 1):
             msg += f"{i}. {username} - Lv.{level} ({exp} exp)\n"
+            
+        prizes = [15000,10000,5000]
+        msg += "\n🎁 지난 시즌 보상 (상품권)\n"
+        for i, (uid, level, exp, username) in enumerate(level_ranking[:3], 1):
+            prize = prizes[i-1]
+            msg += f"{medals[i-1]} {i}등: @{uid} → {prize:,}원 상품권 지급\n"
+        
+        # ✅ 새 시즌 안내 멘트
+        msg += (
+            "\n🎉 1~3등을 축하합니다! 상품은 관리자에 의해 지급됩니다.\n\n"
+            "📢 새로운 시즌이 시작되었습니다!\n"
+            "레벨과 경험치가 초기화되었으며, 모든 유저는 다시 도전할 수 있습니다.\n"
+            "이번 시즌의 챔피언은 누가 될까요? 🔥"
+        )
+        await channel.send(msg)
         
         # ✅ 캐시 초기화
         # 이 부분은 sync_cache_to_sheet에서 이미 처리되므로 여기서는 남은 데이터만 처리
