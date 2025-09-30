@@ -21,7 +21,7 @@ from apscheduler.triggers.cron import CronTrigger
 from utils import get_sheet, safe_int, get_job_icon
 
 LAST_RUN_FILE = "last_run.json"
-
+GENERAL_CHANNEL_ID = int(os.getenv("GENERAL_CHANNEL_ID"))
 KST = timezone("Asia/Seoul")
 # 이번달랭킹 실행했는지 확인하는 함수
 def get_last_run_date_from_sheet():
@@ -305,20 +305,21 @@ async def sync_cache_to_sheet():
                 new_reels = current_reels + reels_from_cache  # 릴스도 합산
 
                 new_level = current_level
-
+                general_channel = bot.get_channel(GENERAL_CHANNEL_ID)
+                
                 if total_messages_from_cache >= 50:
                     penalty = total_messages_from_cache
                     new_inlevel_exp = max(0, current_inlevel_exp - penalty)
                     log_msg = f"🚨 도배 감지!  {current_nickname_from_sheet} 경험치 {penalty} 차감"
                     print(log_msg)
-                    if channel:
-                        await channel.send(log_msg)
+                    if general_channel:
+                        await general_channel.send(log_msg)
                 elif total_messages_from_cache >= 40:
                     new_inlevel_exp = current_inlevel_exp
                     log_msg = f"⚠️ 도배 의심!  {current_nickname_from_sheet} 경험치 미지급"
                     print(log_msg)
-                    if channel:
-                        await channel.send(log_msg)
+                    if general_channel:
+                        await general_channel.send(log_msg)
                 else:
                     new_inlevel_exp = current_inlevel_exp + total_messages_from_cache
 
