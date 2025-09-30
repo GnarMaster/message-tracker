@@ -21,16 +21,15 @@ ENHANCE_TABLE = {
     10: (0.00, 0.00, 0.00, 0, 50),  # 만렙
 }
 
-
+# ✅ Weapon 시트 가져오기 (없으면 생성)
 def get_weapon_sheet():
-    sheet = get_sheet()
+    spreadsheet = get_sheet().spreadsheet
     try:
-        return sheet.worksheet("Weapon")
+        return spreadsheet.worksheet("Weapon")
     except:
-        ws = sheet.add_worksheet(title="Weapon", rows=1000, cols=4)
+        ws = spreadsheet.add_worksheet(title="Weapon", rows=1000, cols=4)
         ws.append_row(["유저 ID", "닉네임", "무기강화상태", "무기공격력"])
         return ws
-
 
 def get_weapon(user_id: str):
     ws = get_weapon_sheet()
@@ -40,7 +39,6 @@ def get_weapon(user_id: str):
             return idx, row
     return None
 
-
 def ensure_weapon(user_id: str, nickname: str):
     exist = get_weapon(user_id)
     if exist:
@@ -49,12 +47,10 @@ def ensure_weapon(user_id: str, nickname: str):
     ws.append_row([user_id, nickname, 1, 1])  # 기본 1강, 공격력 1
     return get_weapon(user_id)
 
-
 def update_weapon(idx, stage, atk):
     ws = get_weapon_sheet()
     ws.update_cell(idx, 3, stage)
     ws.update_cell(idx, 4, atk)
-
 
 def get_gold(user_id: str):
     """시트1에서 골드(13열) 불러오기"""
@@ -65,11 +61,11 @@ def get_gold(user_id: str):
             return idx, safe_int(row.get("골드", 0))
     return None, 0
 
-
+# ✅ 시트1 골드 업데이트
 def update_gold(idx, new_gold):
-    """시트1의 13열(골드) 업데이트"""
-    sheet = get_sheet()
-    sheet.update_cell(idx, 13, new_gold)
+    spreadsheet = get_sheet().spreadsheet
+    ws = spreadsheet.worksheet("시트1")
+    ws.update_cell(idx, 13, new_gold)
 
 
 class ForgeView(discord.ui.View):
@@ -169,11 +165,9 @@ class WeaponCog(commands.Cog):
             embed.add_field(name="다음 단계", value=f"{stage+1}강", inline=True)
             embed.add_field(name="성공확률", value=f"{succ*100:.1f}%", inline=True)
             if fail > 0:
-                embed.add_field(
-                    name="실패확률", value=f"{fail*100:.1f}%", inline=True)
+                embed.add_field(name="실패확률", value=f"{fail*100:.1f}%", inline=True)
             if destroy > 0:
-                embed.add_field(
-                    name="파괴확률", value=f"{destroy*100:.1f}%", inline=True)
+                embed.add_field(name="파괴확률", value=f"{destroy*100:.1f}%", inline=True)
             embed.add_field(name="소모 골드", value=f"{cost}G", inline=True)
         else:
             embed.add_field(name="상태", value="최대 강화 완료!", inline=False)
