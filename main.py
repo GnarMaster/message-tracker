@@ -305,7 +305,22 @@ async def sync_cache_to_sheet():
                 new_reels = current_reels + reels_from_cache  # 릴스도 합산
 
                 new_level = current_level
-                new_inlevel_exp = current_inlevel_exp + total_messages_from_cache
+
+                if total_messages_from_cache >= 50:
+                    penalty = total_messages_from_cache
+                    new_inlevel_exp = max(0, current_inlevel_exp - penalty)
+                    log_msg = f"🚨 도배 감지!  {current_nickname_from_sheet} 경험치 {penalty} 차감"
+                    print(log_msg)
+                    if channel:
+                        await channel.send(log_msg)
+                elif total_messages_from_cache >= 40:
+                    new_inlevel_exp = current_inlevel_exp
+                    log_msg = f"⚠️ 도배 의심!  {current_nickname_from_sheet} 경험치 미지급"
+                    print(log_msg)
+                    if channel:
+                        await channel.send(log_msg)
+                else:
+                    new_inlevel_exp = current_inlevel_exp + total_messages_from_cache
 
                 # ✅ 레벨업 체크
                 while new_level < 100 and new_inlevel_exp >= exp_needed_for_next_level(new_level):
