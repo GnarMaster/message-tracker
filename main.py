@@ -114,10 +114,10 @@ user_levels = {}
 
 @bot.event
 async def on_ready():
+    bot.GENERAL_CHANNEL_ID= GENERAL_CHANNEL_ID
     global message_log
     message_log = load_data()
-    print(f"✅ 봇 로그인 완료: {bot.user}")
-
+    print(f"✅ 봇 로그인 완료: {bot.user}") 
     # cogs/ 하위 모든 폴더까지 탐색
     for root, dirs, files in os.walk("./cogs"):
         for file in files:
@@ -481,152 +481,7 @@ async def 내레벨(interaction: discord.Interaction):
     except Exception as e:
         print(f"❗ /내레벨 에러: {e}")
         await interaction.followup.send("⚠️ 정보를 불러오는 데 실패했습니다.")
-
-# ✅ 랭킹정산
-async def send_monthly_stats():
-    try:
-        # await sync_cache_to_sheet()
-        sheet = get_sheet()
-        spreadsheet = sheet.spreadsheet
-        records = sheet.get_all_records()
-
-        now = datetime.now(KST)
-        last_month = now.replace(day=1) - timedelta(days=1)
-        year, month = last_month.year, last_month.month
-
-        results = []
-        medals = ["🥇", "🥈", "🥉"]
-        for row in records:
-            try:
-                uid_raw = row.get("유저 ID", "0")
-                uid = int(uid_raw) if uid_raw.isdigit() else 0  # 유효성 검사 강화
-                count = int(str(row.get("누적메시지수", 0)).strip())
-                username = row.get("닉네임", f"(ID:{uid})")
-                results.append((uid, count, username))
-            except Exception as e:
-                print(
-                    f"❗ send_monthly_stats - 레코드 처리 중 오류 (유저 ID: {row.get('유저 ID', 'N/A')}): {e}")
-                continue
-
-        if not results:
-            return
-
-        sorted_results = sorted(results, key=lambda x: -x[1])
-
-        channel = bot.get_channel(CHANNEL_ID)
-        if not channel:
-            print("❗ 채널을 찾을 수 없음")
-            return
-        
-        msg = f"📊 {year}년 {month}월 시즌 최종 랭킹\n\n"
-        # 메시지 TOP3
-        msg += "📝 메시지 랭킹 TOP 3\n"
-        for i, (uid, count, username) in enumerate(sorted_results[:3], 1):
-            msg += f"{i}. {username} - {count}개\n"
-    
-        level_ranking = sorted(
-            [(r.get("유저 ID"), safe_int(r.get("레벨", 1)), safe_int(r.get("현재레벨경험치", 0)), r.get("닉네임")) 
-             for r in records if str(r.get("유저 ID")).isdigit()],
-            key=lambda x: (-x[1], -x[2])
-        )
-        # 레벨 TOP3
-        msg += "\n⭐ 레벨 랭킹 TOP 3\n"
-        for i, (uid, level, exp, username) in enumerate(level_ranking[:3], 1):
-            msg += f"{i}. {username} - Lv.{level} ({exp} exp)\n"
-            
-        prizes = [15000,10000,5000]
-        msg += "\n🎁 지난 시즌 보상 (상품권)\n"
-        for i, (uid, level, exp, username) in enumerate(level_ranking[:3], 1):
-            prize = prizes[i-1]
-            msg += f"{medals[i-1]} {i}등: @{uid} → {prize:,}원 상품권 지급\n"
-        
-        # ✅ 새 시즌 안내 멘트
-        msg += (
-            "\n🎉 1~3등을 축하합니다! 상품은 관리자에 의해 지급됩니다.\n\n"
-            "📢 새로운 시즌이 시작되었습니다!\n"
-            "레벨과 경험치가 초기화되었으며, 모든 유저는 다시 도전할 수 있습니다.\n"
-            "이번 시즌의 챔피언은 누가 될까요? 🔥"
-        )
-        await channel.send(msg)
-        
-        # ✅ 캐시 초기화
-        # 이 부분은 sync_cache_to_sheet에서 이미 처리되므로 여기서는 남은 데이터만 처리
-        # 특히, send_monthly_stats는 지난달 데이터를 처리하므로, 해당 데이터를 지워야 함
-        keys_to_delete_from_message_log_monthly = []
-        for key in list(message_log.keys()):
-            user_id, y, m = key.split('-')
-            if int(y) == year and int(m) == month:  # 지난달 데이터
-                keys_to_delete_from_message_log_monthly.append(key)
-
-        for key_to_del in keys_to_delete_from_message_log_monthly:
-            if key_to_del in message_log:
-                del message_log[key_to_del]
-            # detail_log와 channel_special_log는 sync_cache_to_sheet에서 이미 비워짐
-            # 여기서 다시 삭제할 필요는 없지만, 혹시 모를 상황 대비하여 추가
-            if key_to_del in detail_log:  # 지난달 키를 detail_log에서도 삭제
-                del detail_log[key_to_del]
-            special_key = f"{key_to_del.split('-')[0]}-{key_to_del.split('-')[1]}-{key_to_del.split('-')[2]}"
-            if special_key in channel_special_log:  # 지난달 키를 channel_special_log에서도 삭제
-                del channel_special_log[special_key]
-        save_data(message_log)
-
-        # ✅ 백업 시트 생성
-        backup_title = f"{year}년 {month}월"
-        try:
-            # 먼저 기존 백업 시트가 있으면 삭제
-            for ws in spreadsheet.worksheets():
-                if ws.title == backup_title:
-                    spreadsheet.del_worksheet(ws)
-                    break  # 찾아서 삭제했으면 루프 종료
-
-            # 현재 활성 시트를 백업
-            sheet.duplicate(new_sheet_name=backup_title)
-            print(f"✅ 시트 백업 완료: {backup_title}")
-
-            # 백업 시트를 맨 뒤로 이동
-            worksheets = spreadsheet.worksheets()
-            for i, ws in enumerate(worksheets):
-                if ws.title == backup_title:
-                    spreadsheet.reorder_worksheets(
-                        worksheets[:i] + worksheets[i+1:] + [ws]
-                    )
-                    print(f"✅ 백업 시트를 맨 뒤로 이동 완료: {backup_title}")
-                    break
-        except Exception as e:
-            print(f"❗ 백업 시트 생성/이동/삭제 실패: {e}")
-
-        # ✅ Sheet1 초기화 (유저 ID, 닉네임, 골드 유지 / 나머지는 초기화)
-        header = sheet.row_values(1)
-        reset_data = []
-
-        for row in records:
-            user_id = row.get("유저 ID", "")
-            nickname = row.get("닉네임", "")
-            gold = safe_int(row.get("골드", 0))
-
-            new_row = []
-            for col_name in header:
-                if col_name == "유저 ID":
-                    new_row.append(user_id)
-                elif col_name == "닉네임":
-                    new_row.append(nickname)
-                elif col_name == "골드":
-                    new_row.append(gold)
-                elif col_name == "직업":
-                    new_row.append("백수")
-                else:
-                    new_row.append(0)
-            reset_data.append(new_row)
-
-        sheet.resize(rows=1)
-        sheet.append_row(header)
-        sheet.append_rows(reset_data)
-        print("✅ Sheet1 초기화 완료 (ID/닉네임/골드 유지, 나머지 0으로 리셋)")
-
-    except Exception as e:
-        print(f"❗ send_monthly_stats 에러 발생: {e}")
-        traceback.print_exc()
-
+ 
 # ✅ 점메추 기능
 def load_menu():
     sheet = get_sheet()
@@ -806,41 +661,7 @@ async def send_birthday_congrats():
         print(f"❗ 생일 축하 에러 발생: {e}")
         import traceback
         traceback.print_exc()
-
-
-@tree.command(name="랭킹정산", description="이번 달 메시지 랭킹을 수동으로 정산합니다. (고윤서전용)")
-async def 랭킹정산(interaction: discord.Interaction):
-    admin_id = 648091499887591424  # 본인 Discord ID
-    await interaction.response.defer() 
-    print("📌 [/랭킹정산] 명령어 실행됨 (by:", interaction.user.id, ")")
-    
-    if interaction.user.id != admin_id:
-        await interaction.followup.send(
-            "❌ 이 명령어는 고윤서만 사용할 수 있어요!",
-            ephemeral=True
-        )
-        return
-
-    try:
-        await interaction.followup.send("⏳ 랭킹 정산을 시작합니다...")
-
-        print("📌 send_monthly_stats() 실행 시작")
-        await send_monthly_stats()
-        print("✅ send_monthly_stats() 실행 완료")
-
-        # ✅ 추가 안내는 followup으로
-        await interaction.followup.send("✅ 랭킹 정산이 완료되었습니다!")
-        print("📌 완료 메시지 전송됨")
-
-    except Exception as e:
-        print("❌ send_monthly_stats 실행 중 에러:", e)
-        import traceback
-        traceback.print_exc()
-        try:
-            await interaction.followup.send("⚠️ 랭킹 정산 중 오류 발생")
-        except:
-            pass
-            
+  
 # ✅ Render용 Flask 서버
 keep_alive()
 
