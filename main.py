@@ -810,16 +810,25 @@ async def send_birthday_congrats():
 
 @tree.command(name="랭킹정산", description="이번 달 메시지 랭킹을 수동으로 정산합니다. (고윤서전용)")
 async def 랭킹정산(interaction: discord.Interaction):
+    await interaction.response.defer()
     admin_id = 648091499887591424  # 👉 본인 Discord ID로 교체
     if interaction.user.id != admin_id:
-        await interaction.response.send_message("❌ 이 명령어는 고윤서만 사용할 수 있어요!", ephemeral=True)
+        await interaction.followup.send("❌ 이 명령어는 고윤서만 사용할 수 있어요!", ephemeral=True)
         return
+    print("📌 [/랭킹정산] 명령어 실행됨 (by:", interaction.user.id, ")")
 
-    await interaction.response.defer()
-    # 원래 랭킹정산 코드 실행
-    await send_monthly_stats()
+    try:
+        print("📌 send_monthly_stats() 실행 시작")
+        await send_monthly_stats()
+        print("✅ send_monthly_stats() 실행 완료")
+    except Exception as e:
+        print("❌ send_monthly_stats 실행 중 에러:", e)
+        import traceback
+        traceback.print_exc()
+        await interaction.followup.send("⚠️ 랭킹 정산 중 오류 발생")
+        return
     await interaction.followup.send("✅ 랭킹 정산이 완료되었습니다!", ephemeral=True)
-
+    print("📌 완료 메시지 전송됨")
 # ✅ Render용 Flask 서버
 keep_alive()
 
