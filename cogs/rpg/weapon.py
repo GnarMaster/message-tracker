@@ -176,7 +176,7 @@ class WeaponCog(commands.Cog):
             await interaction.response.send_message("❌ 이 명령어는 대장간 채널에서만 사용할 수 있습니다.", ephemeral=True)
             return
 
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer()  # 🔑 공개 메시지용 defer
 
         user_id = str(interaction.user.id)
         nickname = interaction.user.name
@@ -205,7 +205,7 @@ class WeaponCog(commands.Cog):
             embed.add_field(name="상태", value="최대 강화 완료!", inline=False)
             view = None
 
-        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        await interaction.followup.send(embed=embed, view=view)  # 공개 메시지
 
 
 async def setup(bot):
