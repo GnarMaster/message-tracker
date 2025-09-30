@@ -26,7 +26,7 @@ class Rank(commands.Cog):
             results = []
             medals = ["🥇", "🥈", "🥉"]
 
-            # ✅ 메시지 랭킹용 데이터 수집
+            # ✅ 메시지 랭킹 데이터 수집
             for row in records:
                 try:
                     uid_raw = str(row.get("유저 ID", "0")).strip()
@@ -102,31 +102,37 @@ class Rank(commands.Cog):
             except Exception as e:
                 print(f"❗ 백업 시트 작업 실패: {e}")
 
-            # ✅ Sheet1 초기화 (유저 ID, 닉네임, 골드 유지 / 나머지는 초기화)
+            # ✅ 시트 초기화
             header = sheet.row_values(1)
             reset_data = []
+
             for row in records:
                 user_id = row.get("유저 ID", "")
                 nickname = row.get("닉네임", "")
                 gold = safe_int(row.get("골드", 0))
+
                 new_row = []
-                for col_name in header:
-                    if col_name == "유저 ID":
+                for col_idx, col_name in enumerate(header, start=1):
+                    if col_idx == 1:   # A열 (유저 ID)
                         new_row.append(user_id)
-                    elif col_name == "닉네임":
+                    elif col_idx == 2: # B열 (닉네임)
                         new_row.append(nickname)
-                    elif col_name == "골드":
-                        new_row.append(gold)
-                    elif col_name == "직업":
-                        new_row.append("백수")
-                    else:
+                    elif col_idx == 10: # J열 (레벨)
+                        new_row.append(1)
+                    elif col_idx == 11: # K열 (현재레벨경험치)
                         new_row.append(0)
+                    elif col_idx == 12: # L열 (직업)
+                        new_row.append("백수")
+                    elif col_idx == 13:  # M열 (골드)
+                        new_row.append(gold)
+                    else:
+                        new_row.append(0)  # 나머지는 0
                 reset_data.append(new_row)
 
-            sheet.resize(rows=1)
-            sheet.append_row(header)
-            sheet.append_rows(reset_data)
-            print("✅ Sheet1 초기화 완료")
+            # ✅ 시트 전체 초기화 후 다시 기록
+            sheet.clear()
+            sheet.update([header] + reset_data)
+            print("✅ Sheet1 초기화 완료 (ID/닉네임/골드 유지, 레벨=1, 경험치=0, 직업=백수, 나머지 리셋)")
 
         except Exception as e:
             print("❗ send_monthly_stats 에러:", e)
