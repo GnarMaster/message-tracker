@@ -68,6 +68,7 @@ def update_gold(idx, new_gold):
     ws.update_cell(idx, 13, new_gold)
 
 
+# ⚔️ 강화 View
 class ForgeView(discord.ui.View):
     def __init__(self, bot, user_id, nickname):
         super().__init__(timeout=30)
@@ -81,77 +82,100 @@ class ForgeView(discord.ui.View):
             await interaction.response.send_message("❌ 당신의 무기가 아닙니다!", ephemeral=True)
             return
 
-        await interaction.response.defer(ephemeral=True)
+        # 버튼 잠금 (연속 클릭 방지)
+        for item in self.children:
+            item.disabled = True
+        await interaction.message.edit(view=self)
 
-        # ✅ 원본 메시지 삭제
-        try:
-            await interaction.message.delete()
-        except:
-            pass
-
+        # 무기/골드 불러오기
         idx, row = ensure_weapon(self.user_id, self.nickname)
         stage = safe_int(row.get("무기강화상태", 1))
         atk = safe_int(row.get("무기공격력", 1))
         g_idx, gold = get_gold(self.user_id)
 
         if stage >= 10:
-            await interaction.followup.send("⚠️ 이미 10강 만렙입니다!", ephemeral=True)
+            await interaction.response.send_message("⚠️ 이미 10강 만렙입니다!", ephemeral=True)
             return
 
-        succ, fail, destroy, cost, new_atk = ENHANCE_TABLE.get(
-            stage+1, (0, 0, 0, 0, atk))
+        succ, fail, destroy, cost, new_atk = ENHANCE_TABLE.get(stage+1, (0,0,0,0,atk))
         if gold < cost:
-            await interaction.followup.send(
-                f"💰 골드 부족! 필요: {cost}G (보유 {gold}G)", ephemeral=True
-            )
+            await interaction.response.send_message(f"💰 골드 부족! 필요: {cost}G (보유 {gold}G)", ephemeral=True)
             return
 
         # 골드 차감
         update_gold(g_idx, gold - cost)
 
-        msg = await interaction.followup.send("강화 중… 🔨", ephemeral=True)
+        # 진행중 표시
+        await interaction.response.send_message("강화 중… 🔨", ephemeral=True)
         await asyncio.sleep(1.5)
 
+        # 강화 판정
         roll = random.random()
+        result_text = ""
         if roll <= succ:
-            # 성공
             new_stage = stage + 1
             update_weapon(idx, new_stage, new_atk)
-            await msg.edit(content=f"✅ 강화 성공! {stage}강 → {new_stage}강 (공격력 {new_atk})")
-
+            result_text = f"✅ 강화 성공! {stage}강 → {new_stage}강 (공격력 {new_atk})"
             if new_stage == 10:
                 channel = self.bot.get_channel(GENERAL_CHANNEL_ID)
                 if channel:
                     await channel.send(f"🎉 {interaction.user.mention} 님이 **+10강** 무기 강화에 성공하셨습니다!")
-
         elif roll <= succ + fail:
-            # 실패
             if stage == 5:
                 update_weapon(idx, 4, ENHANCE_TABLE[4][4])
-                await msg.edit(content="❌ 강화 실패... 5강에서 4강으로 하락했습니다.")
+                result_text = "❌ 강화 실패... 5강에서 4강으로 하락했습니다."
             elif stage >= 6:
                 update_weapon(idx, stage-1, ENHANCE_TABLE[stage-1][4])
-                await msg.edit(content=f"❌ 강화 실패... {stage}강에서 {stage-1}강으로 하락했습니다.")
+                result_text = f"❌ 강화 실패... {stage}강에서 {stage-1}강으로 하락했습니다."
             else:
-                await msg.edit(content=f"❌ 강화 실패... {stage}강 유지")
-
+                result_text = f"❌ 강화 실패... {stage}강 유지"
         else:
-            # 파괴
             update_weapon(idx, 1, 1)
-            await msg.edit(content="💥 무기 파괴! 1강으로 초기화되었습니다.")
+            result_text = "💥 무기 파괴! 1강으로 초기화되었습니다."
+
+        # 강화 후 최신 상태 다시 불러오기
+        _, row = ensure_weapon(self.user_id, self.nickname)
+        stage = safe_int(row.get("무기강화상태", 1))
+        atk = safe_int(row.get("무기공격력", 1))
+        _, gold = get_gold(self.user_id)
+
+        # 새로운 embed 생성
+        embed = discord.Embed(title="⚒️ 무기 상태", color=discord.Color.orange())
+        embed.add_field(name="닉네임", value=self.nickname, inline=True)
+        embed.add_field(name="강화 단계", value=f"{stage}강", inline=True)
+        embed.add_field(name="무기 공격력", value=str(atk), inline=True)
+        embed.add_field(name="보유 골드", value=f"{gold}G", inline=True)
+        embed.add_field(name="결과", value=result_text, inline=False)
+
+        if stage < 10:
+            succ, fail, destroy, cost, new_atk = ENHANCE_TABLE[stage+1]
+            embed.add_field(name="다음 단계", value=f"{stage+1}강", inline=True)
+            embed.add_field(name="성공확률", value=f"{succ*100:.1f}%", inline=True)
+            if fail > 0:
+                embed.add_field(name="실패확률", value=f"{fail*100:.1f}%", inline=True)
+            if destroy > 0:
+                embed.add_field(name="파괴확률", value=f"{destroy*100:.1f}%", inline=True)
+            embed.add_field(name="소모 골드", value=f"{cost}G", inline=True)
+            new_view = ForgeView(self.bot, self.user_id, self.nickname)
+        else:
+            embed.add_field(name="상태", value="최대 강화 완료!", inline=False)
+            new_view = None
+
+        # 메시지 갱신 (embed + 버튼 새로고침)
+        await interaction.message.edit(embed=embed, view=new_view)
 
 
+# ⚔️ Cog
 class WeaponCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     @app_commands.command(name="내무기", description="내 무기 상태를 확인하고 강화합니다.")
-    async def 무기(self, interaction: discord.Interaction):
+    async def 내무기(self, interaction: discord.Interaction):
         if interaction.channel_id != FORGE_CHANNEL_ID:
             await interaction.response.send_message("❌ 이 명령어는 대장간 채널에서만 사용할 수 있습니다.", ephemeral=True)
             return
 
-        # ✅ defer는 맨 앞에서 호출
         await interaction.response.defer(ephemeral=True)
 
         user_id = str(interaction.user.id)
@@ -159,7 +183,7 @@ class WeaponCog(commands.Cog):
         idx, row = ensure_weapon(user_id, nickname)
         stage = safe_int(row.get("무기강화상태", 1))
         atk = safe_int(row.get("무기공격력", 1))
-        g_idx, gold = get_gold(user_id)
+        _, gold = get_gold(user_id)
 
         embed = discord.Embed(title="⚒️ 무기 상태", color=discord.Color.orange())
         embed.add_field(name="닉네임", value=nickname, inline=True)
@@ -176,12 +200,10 @@ class WeaponCog(commands.Cog):
             if destroy > 0:
                 embed.add_field(name="파괴확률", value=f"{destroy*100:.1f}%", inline=True)
             embed.add_field(name="소모 골드", value=f"{cost}G", inline=True)
+            view = ForgeView(self.bot, user_id, nickname)
         else:
             embed.add_field(name="상태", value="최대 강화 완료!", inline=False)
-
-        view = None
-        if stage < 10:
-            view = ForgeView(self.bot, user_id, nickname)
+            view = None
 
         await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
