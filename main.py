@@ -22,7 +22,7 @@ from utils import get_sheet, safe_int, get_job_icon
 
 LAST_RUN_FILE = "last_run.json"
 
-
+KST = timezone("Asia/Seoul")
 # 이번달랭킹 실행했는지 확인하는 함수
 def get_last_run_date_from_sheet():
     try:
@@ -139,7 +139,7 @@ async def on_ready():
 
     await tree.sync()
 
-    scheduler = AsyncIOScheduler(timezone=timezone("Asia/Seoul"))
+    scheduler = AsyncIOScheduler(timezone=KST)
     scheduler.add_job(send_birthday_congrats, 'cron', hour=0, minute=0)
     # ✅ 1분마다 실행되는 작업 등록
 
@@ -149,9 +149,9 @@ async def on_ready():
 
     scheduler.start()
 
-    print("🕛 현재 시간 (KST):", datetime.now(timezone("Asia/Seoul")))
+    print("🕛 현재 시간 (KST):", datetime.now(KST))
 
-    now = datetime.now()
+    now = datetime.now(KST)
     today_str = now.strftime("%Y-%m-%d")
     last_run = get_last_run_date_from_sheet()
 
@@ -162,7 +162,7 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    now = datetime.now()
+    now = datetime.now(KST)
     year_month = f"{message.author.id}-{now.year}-{now.month}"
 
     if year_month not in detail_log:
@@ -212,7 +212,7 @@ def exp_needed_for_next_level(level: int) -> int:
 async def sync_cache_to_sheet():
     try:
         sheet = get_sheet()
-        now = datetime.now()
+        now = datetime.now(KST)
         year, month = now.year, now.month
 
         records = sheet.get_all_records()
@@ -395,8 +395,6 @@ async def sync_cache_to_sheet():
         traceback.print_exc()
 
 # ✅ 이번달메시지 명령어
-
-
 @tree.command(name="이번달메시지", description="이번 달 메시지 랭킹을 확인합니다.")
 async def 이번달메시지(interaction: discord.Interaction):
     try:
@@ -406,7 +404,7 @@ async def 이번달메시지(interaction: discord.Interaction):
         sheet = get_sheet()
         records = sheet.get_all_records()
 
-        now = datetime.now()
+        now = datetime.now(KST)
         year, month = now.year, now.month
         results = []
 
@@ -441,8 +439,6 @@ async def 이번달메시지(interaction: discord.Interaction):
             pass
 
 # ✅ 내레벨 명령어
-
-
 @tree.command(name="내레벨", description="현재 나의 레벨과 경험치를 확인합니다.")
 async def 내레벨(interaction: discord.Interaction):
     try:
@@ -479,24 +475,6 @@ async def 내레벨(interaction: discord.Interaction):
         print(f"❗ /내레벨 에러: {e}")
         await interaction.followup.send("⚠️ 정보를 불러오는 데 실패했습니다.")
 
-# 매달1일 자동실행
-# 매달 1일 자동 실행 (12시부터 55분까지 매 5분마다 시도됨)
-
-
-async def try_send_monthly_stats():
-    now = datetime.now(timezone("Asia/Seoul"))
-    today_str = now.strftime("%Y-%m-%d")
-    last_run = get_last_run_date_from_sheet()
-
-    # 1일이며, 아직 실행 기록이 없거나, 오늘 날짜와 다를 경우 실행
-    if now.day == 1 and today_str != last_run:
-        print(f"📆 {today_str} 기준 자동 실행 조건 충족 → send_monthly_stats() 실행")
-        await send_monthly_stats()
-        set_last_run_date_to_sheet(today_str)
-    else:
-        print(f"⏩ 자동 실행 조건 불충분 (오늘: {today_str}, 마지막 실행: {last_run})")
-
-
 # ✅ 매달 1일 1등 축하
 async def send_monthly_stats():
     try:
@@ -505,12 +483,12 @@ async def send_monthly_stats():
         spreadsheet = sheet.spreadsheet
         records = sheet.get_all_records()
 
-        now = datetime.now()
+        now = datetime.now(KST)
         last_month = now.replace(day=1) - timedelta(days=1)
         year, month = last_month.year, last_month.month
 
         results = []
-
+        medals = ["🥇", "🥈", "🥉"]
         for row in records:
             try:
                 uid_raw = row.get("유저 ID", "0")
@@ -532,56 +510,22 @@ async def send_monthly_stats():
         if not channel:
             print("❗ 채널을 찾을 수 없음")
             return
-
-        medals = ["🥇", "🥈", "🥉"]
+        
         msg = f"📊 {year}년 {month}월 메시지 랭킹\n\n"
+        # 메시지 TOP3
+        msg += "📝 메시지 랭킹 TOP 3\n"
+        for i, (uid, count, username) in enumerate(sorted_results[:3], 1):
+            msg += f"{i}. {username} - {count}개\n"
 
-        for i, (uid, count, username) in enumerate(sorted_results[:3]):
-            display = f"<@{uid}>" if i == 0 else username  # 1등만 태그
-            msg += f"{medals[i]} {display} - {count}개\n"
-
-        if sorted_results:
-            top_id = sorted_results[0][0]
-            msg += f"\n🎉 지난달 1등은 <@{top_id}>님입니다! 모두 축하해주세요 🎉"
-
-        # ✅ 히든 랭킹 출력
-        hidden_scores = {"mention": [], "link": [],
-                         "image": [], "reels": []}  # 릴스 추가
-        for row in records:
-            try:
-                uid_raw = row.get("유저 ID", 0)
-                uid = int(uid_raw) if str(uid_raw).isdigit() else 0  # 유효성 검사
-                mention = safe_int(row.get("멘션수", 0))
-                link = safe_int(row.get("링크수", 0))
-                image = safe_int(row.get("이미지수", 0))
-                reels = safe_int(row.get("릴스", 0))  # 릴스 데이터 가져오기
-
-                if uid != 0:  # 유효한 UID일 때만 추가
-                    hidden_scores["mention"].append((uid, mention))
-                    hidden_scores["link"].append((uid, link))
-                    hidden_scores["image"].append((uid, image))
-                    hidden_scores["reels"].append((uid, reels))  # 릴스 추가
-            except Exception as e:
-                print(f"❗ send_monthly_stats - 히든 랭킹 레코드 처리 중 오류: {e}")
-                continue
-
-        hidden_msg = "\n\n💡 히든 랭킹 🕵️"
-        names = {"mention": "📣 멘션왕", "link": "🔗 링크왕",
-                 "image": "🖼️ 사진왕", "reels": "✨ 릴스파인더"}  # 릴스 이름 추가
-        for cat, entries in hidden_scores.items():
-            if entries:
-                # 0보다 큰 값만 고려하여 랭킹 정렬
-                valid_entries = [(uid, count)
-                                 for uid, count in entries if count > 0]
-                if valid_entries:
-                    top_uid, top_count = sorted(
-                        valid_entries, key=lambda x: -x[1])[0]
-                    user = await bot.fetch_user(top_uid)
-                    hidden_msg += f"\n{names[cat]}: {user.name} ({top_count}회)"
-        msg += hidden_msg
-
-        await channel.send(msg)
-
+        level_ranking = sorted(
+            [(r.get("유저 ID"), safe_int(r.get("레벨", 1)), safe_int(r.get("현재레벨경험치", 0)), r.get("닉네임")) 
+             for r in records if str(r.get("유저 ID")).isdigit()],
+            key=lambda x: (-x[1], -x[2])
+        )
+        msg += "\n⭐ 레벨 랭킹 TOP 3\n"
+        for i, (uid, level, exp, username) in enumerate(level_ranking[:3], 1):
+            msg += f"{i}. {username} - Lv.{level} ({exp} exp)\n"
+        
         # ✅ 캐시 초기화
         # 이 부분은 sync_cache_to_sheet에서 이미 처리되므로 여기서는 남은 데이터만 처리
         # 특히, send_monthly_stats는 지난달 데이터를 처리하므로, 해당 데이터를 지워야 함
@@ -628,17 +572,39 @@ async def send_monthly_stats():
         except Exception as e:
             print(f"❗ 백업 시트 생성/이동/삭제 실패: {e}")
 
-        # ✅ Sheet1 초기화
-        sheet.resize(rows=1)  # 헤더만 남기고 전체 삭제
-        print("✅ Sheet1 초기화 완료 (헤더만 남김)")
+        # ✅ Sheet1 초기화 (유저 ID, 닉네임, 골드 유지 / 나머지는 초기화)
+        header = sheet.row_values(1)
+        reset_data = []
+
+        for row in records:
+            user_id = row.get("유저 ID", "")
+            nickname = row.get("닉네임", "")
+            gold = safe_int(row.get("골드", 0))
+
+            new_row = []
+            for col_name in header:
+                if col_name == "유저 ID":
+                    new_row.append(user_id)
+                elif col_name == "닉네임":
+                    new_row.append(nickname)
+                elif col_name == "골드":
+                    new_row.append(gold)
+                elif col_name == "직업":
+                    new_row.append("백수")
+                else:
+                    new_row.append(0)
+            reset_data.append(new_row)
+
+        sheet.resize(rows=1)
+        sheet.append_row(header)
+        sheet.append_rows(reset_data)
+        print("✅ Sheet1 초기화 완료 (ID/닉네임/골드 유지, 나머지 0으로 리셋)")
 
     except Exception as e:
         print(f"❗ send_monthly_stats 에러 발생: {e}")
         traceback.print_exc()
 
 # ✅ 점메추 기능
-
-
 def load_menu():
     sheet = get_sheet()
     menu_sheet = sheet.spreadsheet.worksheet("Menu_List")
@@ -732,8 +698,6 @@ async def 메뉴판(interaction: discord.Interaction):
         await interaction.followup.send("⚠️ 메뉴판을 불러오는 데 실패했습니다.")
 
 # ✅ 생일추가 기능
-
-
 @tree.command(name="생일추가", description="당신의 생일을 추가합니다. (형식: MMDD)")
 @app_commands.describe(birthday="생일을 MMDD 형식으로 입력해주세요. 예: 0402")
 async def 생일추가(interaction: discord.Interaction, birthday: str):
@@ -783,11 +747,9 @@ async def 생일추가(interaction: discord.Interaction, birthday: str):
         await interaction.followup.send("⚠️ 생일 저장 중 오류가 발생했어요.")
 
 # ✅ 생일축하 기능
-
-
 async def send_birthday_congrats():
     try:
-        today_str = datetime.now(timezone("Asia/Seoul")).strftime("%Y-%m-%d")
+        today_str = datetime.now(KST).strftime("%Y-%m-%d")
         last_run = get_last_birthday_run()
 
         if last_run == today_str:
@@ -796,7 +758,7 @@ async def send_birthday_congrats():
 
         sheet = get_sheet().spreadsheet.worksheet("Dictionary_Birth_SAVE")
         records = sheet.get_all_records()
-        today_md = datetime.now(timezone("Asia/Seoul")).strftime("%m-%d")
+        today_md = datetime.now(KST).strftime("%m-%d")
         birthday_users = []
 
         for row in records:
@@ -833,8 +795,7 @@ async def 랭킹정산(interaction: discord.Interaction):
     await interaction.response.defer()
     # 원래 랭킹정산 코드 실행
     await send_monthly_stats()
-    await interaction.followup.send("📊 랭킹 정산이 완료되었습니다.")
-
+    await interaction.followup.send("✅ 랭킹 정산이 완료되었습니다!", ephemeral=True)
 
 # ✅ Render용 Flask 서버
 keep_alive()
