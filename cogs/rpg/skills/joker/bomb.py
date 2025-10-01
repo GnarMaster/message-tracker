@@ -57,10 +57,10 @@ class Bomb(commands.Cog):
             return -40, "self"
 
     @app_commands.command(
-        name="폭탄",
+        name="붐",
         description="특수 전용 스킬: 랜덤 또는 (축제광은) 지정 + 랜덤 폭죽 (쿨타임 4시간)"
     )
-    async def 폭탄(self, interaction: discord.Interaction, target: discord.Member = None):
+    async def 붐(self, interaction: discord.Interaction, target: discord.Member = None):
         # ✅ PVP 채널 제한
         if interaction.channel.id != PVP_CHANNEL_ID:
             await interaction.response.send_message(
@@ -76,7 +76,7 @@ class Bomb(commands.Cog):
 
         try:
             # 쿨타임 확인
-            last_used = self.get_last_skill_time(user_id, "폭탄")
+            last_used = self.get_last_skill_time(user_id, "붐")
             if last_used and datetime.now() < last_used + timedelta(hours=4):
                 remain = (last_used + timedelta(hours=4)) - datetime.now()
                 minutes = remain.seconds // 60
@@ -111,7 +111,7 @@ class Bomb(commands.Cog):
             # ✅ 카피닌자 분기
             if job == "카피닌자":
                 copied_skill = get_copied_skill(user_id)
-                if copied_skill != "폭탄":
+                if copied_skill != "붐":
                     await interaction.edit_original_response(content="❌ 현재 복사한 스킬이 폭탄이 아닙니다.")
                     return
                 clear_copied_skill(user_id)
@@ -146,7 +146,7 @@ class Bomb(commands.Cog):
                 new_user_exp = safe_int(user_data.get("현재레벨경험치", 0)) + damage
                 sheet.update_cell(user_idx, 11, new_user_exp)
 
-                self.log_skill_use(user_id, username, "폭탄", f"자폭 -40 exp")
+                self.log_skill_use(user_id, username, "붐", f"자폭 -40 exp")
                 result_msg = prefix_msg + f"☠️ 스스로 -40 exp (현재 경험치: {new_user_exp})"
             else:
                 # ✅ 반격 체크 먼저
@@ -156,7 +156,7 @@ class Bomb(commands.Cog):
                     self.log_skill_use(
                         user_id,
                         username,
-                        "폭탄",
+                        "붐",
                         f"반격 발동! 자신이 -{damage} exp"
                     )
                     result_msg = (
@@ -173,7 +173,7 @@ class Bomb(commands.Cog):
                     self.log_skill_use(
                         user_id,
                         username,
-                        "폭탄",
+                        "붐",
                         f"대상: {target_name}, -{damage} exp"
                     )
 
