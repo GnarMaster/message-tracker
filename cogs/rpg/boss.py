@@ -9,16 +9,19 @@ from utils import get_sheet, safe_int
 # ✅ 보스 전용 채널 ID (환경변수에서 불러오기)
 BOSS_CHANNEL_ID = int(os.getenv("BOSS_CHANNEL_ID", 0))
 
-# ✅ 보스 등장 멘트 리스트 (보스 이름 삽입 가능)
+# ✅ 보스 등장 멘트 리스트
 BOSS_INTRO_MESSAGES = [
-    "🌩️ 어둠 속에서 {name}(이)가 다가온다...",
-    "💀 죽음의 기운이 감돌며 {name}(이)가 나타난다!",
-    "🌋 용암이 끓어오르며 {name}(이)가 깨어난다!",
-    "🌪️ 폭풍이 몰아치며 {name}(이)가 형체를 이룬다!",
-    "🌌 차원의 균열이 열리며 {name}(이)가 걸어나온다!",
-    "☠️ 이 땅에 재앙이 깃든다... {name}(이)가 등장했다!",
-    "❓ 얘가 왜 보스임 ❓ {name} 입갤 ㅋㅋ",
-    "🔥Boom! {name}🔥"
+    "⚡ 하늘이 갈라지고 천둥이 울려퍼진다...",
+    "🔥 대지가 흔들리며 지옥의 문이 열렸다!",
+    "🌩️ 어둠 속에서 거대한 기운이 다가온다...",
+    "💀 죽음의 기운이 감돌며 보스가 나타난다!",
+    "🌋 용암이 끓어오르며 괴물이 깨어난다!",
+    "❄️ 차가운 기운이 퍼지며 전장이 얼어붙는다!",
+    "🌪️ 폭풍이 몰아치며 그림자가 형체를 이룬다!",
+    "🩸 핏빛 안개 속에서 괴성이 울려퍼진다!",
+    "🌌 차원의 균열이 열리며 괴물이 걸어나온다!",
+    "☠️ 이 땅에 재앙이 깃든다... 보스가 등장했다!",
+    "❓ 얘가 왜 보스임 ❓"
 ]
 
 class Boss(commands.Cog):
@@ -63,17 +66,14 @@ class Boss(commands.Cog):
             return sheet.worksheet("Boss_History")
         except:
             ws = sheet.add_worksheet(title="Boss_History", rows=1000, cols=10)
-            ws.append_row([
-                "보스이름", "HP_MAX", "소환일시", "처치일시",
-                "막타ID", "막타닉네임",
-                "1등ID", "1등닉네임",
-                "2등ID", "2등닉네임",
-                "3등ID", "3등닉네임",
-                "기타참여자수"
-            ])
+            ws.append_row(["보스이름", "HP_MAX", "소환일시", "처치일시",
+               "막타ID", "막타닉네임",
+               "1등ID", "1등닉네임",
+               "2등ID", "2등닉네임",
+               "3등ID", "3등닉네임",
+               "기타참여자수"])
             return ws
 
-    # ✅ 마지막 공격 시간
     def get_last_attack_time(self, user_id: str):
         log_sheet = self.get_log_sheet()
         records = log_sheet.get_all_records()
@@ -85,7 +85,6 @@ class Boss(commands.Cog):
                     return None
         return None
 
-    # ✅ 공격 로그 기록
     def log_attack(self, user_id: str, username: str, dmg: int, note: str = ""):
         log_sheet = self.get_log_sheet()
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -112,8 +111,7 @@ class Boss(commands.Cog):
             [[name, hp, hp, 200, 50, "", "", datetime.now().strftime("%Y-%m-%d %H:%M:%S")]]
         )
 
-        intro_template = random.choice(BOSS_INTRO_MESSAGES)
-        intro = intro_template.format(name=name)
+        intro = random.choice(BOSS_INTRO_MESSAGES)
         await interaction.delete_original_response()
         await interaction.followup.send(
             f"{intro}\n"
@@ -168,7 +166,6 @@ class Boss(commands.Cog):
         boss_sheet.update_cell(2, 3, hp_now)
         boss_sheet.update_cell(2, 6, user_id)
 
-        # ✅ 공격자 기록 업데이트
         attackers = boss.get("공격자ID", "")
         attack_dict = {}
         if attackers:
@@ -184,11 +181,11 @@ class Boss(commands.Cog):
 
         await interaction.delete_original_response()
         if hp_now <= 0:
-            # ✅ 막타 메시지 먼저 출력
+            # ✅ 막타 공격 로그 먼저 출력
             await interaction.followup.send(
                 f"{header_msg}\n{detail_log}\n👉 총합: {dmg} 피해\n💀 보스의 HP가 0이 되었습니다!"
             )
-            # ✅ 보상 정산
+            # ✅ 보상 정산 출력
             await self.reward_boss(interaction, attack_dict, user_id, boss)
         else:
             await interaction.followup.send(
@@ -202,13 +199,13 @@ class Boss(commands.Cog):
         header_msg = ""
 
         # ⚔️ 전사
-        if job in ["전사", "검성", "투신", "검투사"]:
+        if job in ["전사","검성","투신","검투사"]:
             header_msg = f"⚔️ {user.name} 님이 보스에게 **삼연격**을 시전했다!"
-            chances = [90, 60, 30, 15] if job == "검성" else [90, 45, 15]
+            chances = [90,60,30,15] if job == "검성" else [90,45,15]
             for i, chance in enumerate(chances, start=1):
-                if random.randint(1, 100) <= chance:
-                    dmg = 8 + level
-                    if random.randint(1, 100) <= 10:
+                if random.randint(1,100) <= chance:
+                    dmg = 8+level
+                    if random.randint(1,100) <= 10:
                         dmg *= 2
                         logs.append(f"{i}타: 🔥 치명타! ({dmg})")
                     else:
@@ -217,121 +214,99 @@ class Boss(commands.Cog):
                 else:
                     logs.append(f"{i}타: ❌ 실패")
             if job == "투신":
-                bonus = int((8 + level) * 1.5)
+                bonus = int((8+level)*1.5)
                 logs.append(f"⚡ 투신 추가 일격! ({bonus})")
                 total_damage += bonus
             if job == "검투사":
                 logs.append("🛡️ 검투사 보정: 총 피해 1.5배 적용!")
-                total_damage = int(total_damage * 1.5)
+                total_damage = int(total_damage*1.5)
 
         # 🔮 마법사
-        elif job in ["마법사", "폭뢰술사", "연격마도사"]:
+        elif job in ["마법사","폭뢰술사","연격마도사"]:
             header_msg = f"🔮 {user.name} 님의 **체인라이트닝** 발동!"
-            base = 6 + level
+            base = 6+level
             multiplier, hit, i = 1, True, 1
-            while hit and multiplier >= 1 / 64:
-                dmg = max(1, int(base * multiplier))
-                if random.randint(1, 100) <= 10:
+            while hit and multiplier >= 1/64:
+                dmg = max(1,int(base*multiplier))
+                if random.randint(1,100) <= 10:
                     dmg *= 2
                     logs.append(f"{i}타: ⚡ 치명타! ({dmg})")
                 else:
                     logs.append(f"{i}타: ⚡ 명중 ({dmg})")
                 total_damage += dmg
-                if i >= 2:
-                    hit = random.random() <= 0.5
-                i += 1
-                multiplier /= 2
-            if job in ["폭뢰술사", "연격마도사"]:
+                if i>=2: hit = random.random() <= 0.5
+                i+=1; multiplier/=2
+            if job in ["폭뢰술사","연격마도사"]:
                 logs.append("⚡ 2차 전직 보정: 총 피해 1.5배 적용!")
-                total_damage = int(total_damage * 1.5)
+                total_damage = int(total_damage*1.5)
 
         # 🏹 궁수
-        elif job in ["궁수", "저격수", "연사수"]:
+        elif job in ["궁수","저격수","연사수"]:
             header_msg = f"🏹 {user.name} 님의 **더블샷** 발동!"
             for i in range(2):
-                base = 10 + level
-                roll = random.randint(1, 100)
-                if roll <= 20:
-                    dmg = base * 2
-                    logs.append(f"{i+1}타: 🎯 치명타! ({dmg})")
-                    total_damage += dmg
-                elif roll <= 90:
-                    dmg = base
-                    logs.append(f"{i+1}타: 🎯 명중 ({dmg})")
-                    total_damage += dmg
+                base=10+level
+                roll=random.randint(1,100)
+                if roll<=20:
+                    dmg=base*2; logs.append(f"{i+1}타: 🎯 치명타! ({dmg})"); total_damage+=dmg
+                elif roll<=90:
+                    dmg=base; logs.append(f"{i+1}타: 🎯 명중 ({dmg})"); total_damage+=dmg
                 else:
                     logs.append(f"{i+1}타: ❌ 빗나감")
-            if job in ["저격수", "연사수"]:
+            if job in ["저격수","연사수"]:
                 logs.append("⚡ 2차 전직 보정: 총 피해 1.5배 적용!")
-                total_damage = int(total_damage * 1.5)
+                total_damage=int(total_damage*1.5)
 
         # 🥷 도적
-        elif job in ["도적", "암살자", "의적", "카피닌자"]:
-            header_msg = f"🥷 {user.name} 님이 보스를 **스틸**하였다!"
-            roll = random.uniform(0, 100)
-            if roll <= 80:
-                dmg = (random.randint(1, 10) + level) * 2
-            elif roll <= 90:
-                dmg = 0
-            elif roll <= 99:
-                dmg = (random.randint(11, 19) + level) * 2
+        elif job in ["도적","암살자","의적","카피닌자"]:
+            header_msg=f"🥷 {user.name} 님이 보스를 **스틸**하였다!"
+            roll=random.uniform(0,100)
+            if roll<=80: dmg=(random.randint(1,10)+level)*2
+            elif roll<=90: dmg=0
+            elif roll<=99: dmg=(random.randint(11,19)+level)*2
             else:
-                jackpot = random.random()
-                if jackpot <= 0.001:
-                    dmg = 200 + level
-                elif jackpot <= 0.005:
-                    dmg = 100 + level
-                else:
-                    dmg = (50 + level) * 2
-            total_damage += dmg
+                jackpot=random.random()
+                if jackpot<=0.001: dmg=200+level
+                elif jackpot<=0.005: dmg=100+level
+                else: dmg=(50+level)*2
+            total_damage+=dmg
             logs.append(f"스틸 피해: {dmg}")
-            if job == "암살자" and dmg > 0 and random.random() <= 0.3:
-                logs.append(f"⚡ 연속 스틸 발동! 추가 {dmg} 피해")
-                total_damage += dmg
-            if job in ["의적", "카피닌자"]:
-                logs.append("📦 특수효과 무효 → 피해 1.5배 적용!")
-                total_damage = int(total_damage * 1.5)
+            if job=="암살자" and dmg>0 and random.random()<=0.3:
+                logs.append(f"⚡ 연속 스틸 발동! 추가 {dmg} 피해"); total_damage+=dmg
+            if job in ["의적","카피닌자"]:
+                logs.append("📦 특수효과 무효 → 피해 1.5배 적용!"); total_damage=int(total_damage*1.5)
 
         # 💣 특수
-        elif job in ["특수", "축제광", "파괴광"]:
-            header_msg = f"💣 {user.name} 님이 보스에게 **폭탄**을 던졌다!"
-            roll = random.uniform(0, 100)
-            if roll <= 70:
-                dmg = random.randint(20, 30) + level
-                logs.append(f"💣 폭탄 명중 ({dmg})")
-            elif roll <= 90:
-                dmg = random.randint(45, 60) + level
-                logs.append(f"💥 강력 폭발 ({dmg})")
-            elif roll <= 99:
-                if random.uniform(0, 100) <= 1:
-                    dmg = 300 + level
-                    logs.append(f"🌋 전설적 폭발 ({dmg})")
-                else:
-                    dmg = random.randint(80, 100) + level
-                    logs.append(f"🔥 치명적 폭발 ({dmg})")
-            else:
-                dmg = 0
-                logs.append("☠️ 자폭! (데미지 없음)")
-            total_damage += dmg
-            if job in ["축제광", "파괴광"]:
+        elif job in ["특수","축제광","파괴광"]:
+            header_msg=f"💣 {user.name} 님이 보스에게 **폭탄**을 던졌다!"
+            roll=random.uniform(0,100)
+            if roll<=70: dmg=random.randint(20,30)+level; logs.append(f"💣 폭탄 명중 ({dmg})")
+            elif roll<=90: dmg=random.randint(45,60)+level; logs.append(f"💥 강력 폭발 ({dmg})")
+            elif roll<=99:
+                if random.uniform(0,100)<=1: dmg=300+level; logs.append(f"🌋 전설적 폭발 ({dmg})")
+                else: dmg=random.randint(80,100)+level; logs.append(f"🔥 치명적 폭발 ({dmg})")
+            else: dmg=0; logs.append(f"☠️ 자폭! (데미지 없음)")
+            total_damage+=dmg
+            if job in ["축제광","파괴광"]:
                 logs.append("💥 2차 전직 보정: 총 피해 1.5배 적용!")
-                total_damage = int(total_damage * 1.5)
+                total_damage=int(total_damage*1.5)
 
         # 👊 기본 평타
         else:
-            header_msg = f"👊 {user.name} 님의 평타!"
-            total_damage = random.randint(5, 10)
+            header_msg=f"👊 {user.name} 님의 평타!"
+            total_damage=random.randint(5,10)
             logs.append(f"평타 ({total_damage})")
 
-        return total_damage, "\n".join(logs), header_msg
-
+    return total_damage, "\n".join(logs), header_msg
+        
+    # 히스토리 기록
     # ✅ 보스 보상 처리
     async def reward_boss(self, interaction: discord.Interaction, attack_dict: dict, last_attacker: str, boss: dict):
-        sheet = get_sheet()
-        records = sheet.get_all_records()
-        boss_name = boss.get("보스이름", "???")
-        ranking = sorted(attack_dict.items(), key=lambda x: -x[1])
-
+        sheet=get_sheet(); records=sheet.get_all_records()
+        boss_name=boss.get("보스이름","???")
+        ranking=sorted(attack_dict.items(), key=lambda x:-x[1])
+        sheet = get_sheet(); records = sheet.get_all_records()
+        boss_name = boss.get("보스이름","???")
+        ranking = sorted(attack_dict.items(), key=lambda x:-x[1])
         # ✅ 보상표 (EXP, GOLD)
         reward_table = {
             "last_hit": (100, 100),
@@ -341,6 +316,8 @@ class Boss(commands.Cog):
             "participant": (25, 25)
         }
 
+        rewards={}
+        
         rewards = {}
         if len(ranking) >= 1:
             rewards[ranking[0][0]] = reward_table["1st"]
@@ -348,6 +325,8 @@ class Boss(commands.Cog):
             rewards[ranking[1][0]] = reward_table["2nd"]
         if len(ranking) >= 3:
             rewards[ranking[2][0]] = reward_table["3rd"]
+            
+         # 막타 보상 추가 (겹치면 누적)
 
         # 막타 보상 추가
         if last_attacker in rewards:
@@ -356,6 +335,7 @@ class Boss(commands.Cog):
             rewards[last_attacker] = (exp + le, gold + lg)
         else:
             rewards[last_attacker] = reward_table["last_hit"]
+            
 
         # 기타 참여자
         for uid in attack_dict:
@@ -369,15 +349,51 @@ class Boss(commands.Cog):
                 exp, gold = rewards[uid]
                 current_exp = safe_int(row.get("현재레벨경험치", 0))
                 current_gold = safe_int(row.get("골드", 0))
+
                 new_exp = current_exp + exp
                 new_gold = current_gold + gold
                 sheet.update_cell(idx, 11, new_exp)  # 경험치
                 sheet.update_cell(idx, 13, new_gold) # 골드
 
-        # 보스 시트 초기화
-        self.get_boss_sheet().update_cell(2, 3, 0)
+                sheet.update_cell(idx, 11, new_exp)  # K열 = 경험치
+                sheet.update_cell(idx, 13, new_gold) # M열 = 골드 (구조 확인 필요)
 
+        #보스 시트 초기화
+        self.get_boss_sheet().update_cell(2,3,0)
+        
+        history=self.get_history_sheet()
+        try: last_user=await interaction.client.fetch_user(int(last_attacker)); last_name=last_user.name
+        except: last_name="Unknown"
+        rank_info=[]
+        for i in range(3):
+            if len(ranking)>i:
+                uid=ranking[i][0]
+                try:u=await interaction.client.fetch_user(int(uid)); uname=u.name
+                except:uname="Unknown"
+                rank_info.extend([uid,uname])
+            else: rank_info.extend(["",""])
+        history.append_row([
+            boss_name,boss.get("HP_MAX",0),boss.get("소환일시",""),datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            last_attacker,last_name,rank_info[0],rank_info[1],rank_info[2],rank_info[3],rank_info[4],rank_info[5],max(0,len(attack_dict)-3)
+        ])
         # ✅ 출력 메시지
+        msg += f"\n⚔️ 막타: <@{last_attacker}> → +100 EXP, +100 GOLD\n"
+
+
+        # ✅ 출력 메시지 (순서 정리됨)
         msg = f"🎉 보스 **{boss_name}** 쓰러짐!\n\n🏆 누적 데미지 랭킹:\n"
         medals = ["🥇", "🥈", "🥉"]
-        exp_list
+        exp_list = [75, 60, 50]
+        gold_list = [75, 60, 50]
+        
+        # 막타
+        msg += f"\n⚔️ 막타: <@{last_attacker}> → +100 EXP, +100 GOLD\n"
+        for i, (uid, dmg) in enumerate(ranking[:3]):
+            msg += f"{medals[i]} <@{uid}> ({dmg} 피해) → +{exp_list[i]} EXP, +{gold_list[i]} GOLD\n"
+        # 기타 참여자
+        msg += "🙌 기타 참여자 전원 → +25 EXP, +25 GOLD"
+
+        await interaction.followup.send(msg)
+
+async def setup(bot):
+    await bot.add_cog(Boss(bot))
