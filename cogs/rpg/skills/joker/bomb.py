@@ -120,7 +120,7 @@ class Bomb(commands.Cog):
                 if job not in ["특수","파괴광","축제광","미치광이"]:
                     await interaction.edit_original_response(content="❌ 특수 직업만 사용할 수 있는 스킬입니다!")
                     return
-                prefix_msg = f"💣 {username} 님이 폭탄을 던졌습니다!\n"
+                prefix_msg = f"💣 {username}의 Boom!\n"
 
             # ✅ 성공 → 비공개 응답 삭제
             await interaction.delete_original_response()
