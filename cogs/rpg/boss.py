@@ -11,17 +11,14 @@ BOSS_CHANNEL_ID = int(os.getenv("BOSS_CHANNEL_ID", 0))
 
 # ✅ 보스 등장 멘트 리스트
 BOSS_INTRO_MESSAGES = [
-    "⚡ 하늘이 갈라지고 천둥이 울려퍼진다...",
-    "🔥 대지가 흔들리며 지옥의 문이 열렸다!",
-    "🌩️ 어둠 속에서 거대한 기운이 다가온다...",
-    "💀 죽음의 기운이 감돌며 보스가 나타난다!",
-    "🌋 용암이 끓어오르며 괴물이 깨어난다!",
-    "❄️ 차가운 기운이 퍼지며 전장이 얼어붙는다!",
-    "🌪️ 폭풍이 몰아치며 그림자가 형체를 이룬다!",
-    "🩸 핏빛 안개 속에서 괴성이 울려퍼진다!",
-    "🌌 차원의 균열이 열리며 괴물이 걸어나온다!",
-    "☠️ 이 땅에 재앙이 깃든다... 보스가 등장했다!",
-    "❓ 얘가 왜 보스임 ❓"
+    "🌩️ 어둠 속에서 {name}(이)가다가온다...",
+    "💀 죽음의 기운이 감돌며 {name}(이)가 나타난다!",
+    "🌋 용암이 끓어오르며 {name}(이)가 깨어난다!",
+    "🌪️ 폭풍이 몰아치며 {name}(이)가 형체를 이룬다!",
+    "🌌 차원의 균열이 열리며 {name}(이)가 걸어나온다!",
+    "☠️ 이 땅에 재앙이 깃든다... {name}(이)가 등장했다!",
+    "❓ 얘가 왜 보스임 ❓ {name} 입갤 ㅋㅋ",
+    "🔥Boom! {name}🔥"
 ]
 
 class Boss(commands.Cog):
@@ -111,7 +108,8 @@ class Boss(commands.Cog):
             [[name, hp, hp, 200, 50, "", "", datetime.now().strftime("%Y-%m-%d %H:%M:%S")]]
         )
 
-        intro = random.choice(BOSS_INTRO_MESSAGES)
+        intro_template = random.choice(BOSS_INTRO_MESSAGES)
+        intro = intro_template.format(name=name)
         await interaction.delete_original_response()
         await interaction.followup.send(
             f"{intro}\n"
