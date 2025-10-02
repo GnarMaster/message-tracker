@@ -117,7 +117,7 @@ class Boss(commands.Cog):
             f"{intro}\n"
             f"☠️ 보스 **{name}** 등장!\n"
             f"❤️ HP: ???\n"
-            f"🎁 보상: 막타 200 EXP | 🥇 1등 150 | 🥈 2등 125 | 🥉 3등 100 | 🙌 참가자 50"
+            f"🎁 보상: 막타 100EXP, 100GOLD | 🥇 1등 75EXP, 75GOLD | 🥈 2등 60EXP, 60GOLD | 🥉 3등 50EXP, 50GOLD | 🙌 참가자 25EXP, 25GOLD"
         )
 
     # ✅ 보스 공격
