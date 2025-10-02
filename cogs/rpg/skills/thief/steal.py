@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from utils import get_sheet, safe_int, check_counter, save_copied_skill
 import random
 import os
+from cogs.rpg.skills.SkillLogic import plus_damage
+
 # PVP 채널 ID 불러오기
 PVP_CHANNEL_ID = int(os.getenv("PVP_CHANNEL_ID", 0))
 
@@ -136,7 +138,7 @@ class Steal(commands.Cog):
                     content=f"🥷 {interaction.user.name} 님이 {target.mention} 님을 스틸하려 했지만 실패했습니다…"
                 )
                 return
-            steal_amount = base + level
+            steal_amount = base + plus_damage(user_id)
 
             # ✅ 반격 체크
             counter_msg = check_counter(user_id, interaction.user.name, target_id, target.mention, steal_amount)
