@@ -157,10 +157,8 @@ class ForgeView(discord.ui.View):
 
         # 새로운 embed
         embed = discord.Embed(title="⚒️ 무기 상태", color=discord.Color.orange())
-        embed.add_field(name="닉네임", value=self.nickname, inline=True)
         embed.add_field(name="강화 단계", value=f"{stage}강", inline=True)
         embed.add_field(name="무기 공격력", value=str(atk), inline=True)
-        embed.add_field(name="결과", value=result_text, inline=False)
 
         if stage < 10:
             succ, fail, destroy, cost, new_atk = ENHANCE_TABLE[stage+1]
@@ -171,12 +169,15 @@ class ForgeView(discord.ui.View):
                 embed.add_field(name="실패확률", value=f"{fail*100:.1f}%", inline=True)
             if destroy > 0:
                 embed.add_field(name="파괴확률", value=f"{destroy*100:.1f}%", inline=True)
+            embed.add_field(name="보유 골드", value=f"{gold}G", inline=True)    
             embed.add_field(name="소모 골드", value=f"{cost}G", inline=True)
             new_view = ForgeView(self.bot, self.user_id, self.nickname)
         else:
             embed.add_field(name="상태", value="최대 강화 완료!", inline=False)
+            embed.add_field(name="보유 골드", value=f"{gold}G", inline=True)
             new_view = None
-
+        embed.add_field(name="결과", value=result_text, inline=False)
+        
         # 메시지 갱신
         msg = await interaction.message.edit(embed=embed, view=new_view)
         if new_view:
@@ -205,7 +206,6 @@ class WeaponCog(commands.Cog):
         _, gold = get_gold(user_id)
 
         embed = discord.Embed(title="⚒️ 무기 상태", color=discord.Color.orange())
-        embed.add_field(name="닉네임", value=nickname, inline=True)
         embed.add_field(name="강화 단계", value=f"{stage}강", inline=True)
         embed.add_field(name="무기 공격력", value=str(atk), inline=True)
 
@@ -218,6 +218,8 @@ class WeaponCog(commands.Cog):
                 embed.add_field(name="실패확률", value=f"{fail*100:.1f}%", inline=True)
             if destroy > 0:
                 embed.add_field(name="파괴확률", value=f"{destroy*100:.1f}%", inline=True)
+            
+            embed.add_field(name="보유 골드", value=f"{gold}G", inline=True)
             embed.add_field(name="소모 골드", value=f"{cost}G", inline=True)
             view = ForgeView(self.bot, user_id, nickname)
         else:
