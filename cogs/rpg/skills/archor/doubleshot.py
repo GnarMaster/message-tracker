@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import random
 import os
 from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter
+from cogs.rpg.skills.SkillLogic import plus_damage
 
 # PVP 채널 ID 불러오기
 PVP_CHANNEL_ID = int(os.getenv("PVP_CHANNEL_ID", 0))
@@ -12,7 +13,6 @@ PVP_CHANNEL_ID = int(os.getenv("PVP_CHANNEL_ID", 0))
 class Archer(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        # self.level은 사용하지 않고, 함수 내에서 로드된 level 변수를 사용하도록 유지합니다.
 
     def get_skill_log_sheet(self):
         sheet = get_sheet().spreadsheet
@@ -42,11 +42,11 @@ class Archer(commands.Cog):
         log_sheet.append_row([now_str, user_id, username, skill_name, note])
 
     # ⭐ 1. shoot_arrow 함수 수정: 데미지만 계산하고 반환 (시트 업데이트 로직 제거)
-    def shoot_arrow(self, target_data, target_obj, is_first: bool, is_sniper: bool, level: int):
-        base = 10 + level
-        crit_chance = 20
+    def shoot_arrow(self, target_data, target_obj, is_first: bool, is_sniper: bool, user_id: str):
+        base = 10 + plus_damage(user_id)
+        crit_chance = 10
         if is_sniper:
-            base = 12 + level
+            base = 14 + plus_damage(user_id)
 
         roll = random.randint(1, 100)
         if roll <= crit_chance:
