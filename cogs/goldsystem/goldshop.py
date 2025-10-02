@@ -5,7 +5,7 @@ from utils import get_sheet, safe_int
 from inventory_utils import add_item
 import random
 
-# 🛒 상점 아이템 리스트
+# 🛒 상점 아이템 리스트 
 SHOP_ITEMS = [
     {"name": "직업변경권", "price": 200, "desc": "직업을 변경할 수 있는 특별한 권한"},
     {"name": "5천원 상품권", "price": 5000, "desc": "관리자가 직접 지급하는 리워드"},
