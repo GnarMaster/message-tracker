@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 import random
 import os
 from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter, add_counter_buff
+from cogs.rpg.skills.SkillLogic import plus_damage
+
 # PVP 채널 ID 불러오기
 PVP_CHANNEL_ID = int(os.getenv("PVP_CHANNEL_ID", 0))
 
@@ -107,14 +109,15 @@ class ThreeHits(commands.Cog):
                 else:
                     prefix_msg = f"⚔️ {interaction.user.name} 님이 {target.mention} 님에게 **삼연격**을 시전했다!\n"
 
-            level = safe_int(user_row[1].get("레벨", 1))
 
+            #데미지 계산 구간
+            BASE = 7 #전사 기본데미지
             def calc_base_damage():
                 crit_roll = random.randint(1, 100)
                 if crit_roll <= 10:  # 10% 치명타
-                    return 14 + (level * 2), "🔥 치명타!"
+                    return BASE + plus_damage(user_id), "🔥 치명타!"
                 else:
-                    return 7 + level, "✅ 명중!"
+                    return BASE + plus_damage(user_id), "✅ 명중!"
 
             if job == "검성":
                 chances = [90, 60, 30, 15]
