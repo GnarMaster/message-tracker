@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import random
 from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter
 import os
+from cogs.rpg.skills.SkillLogic import plus_damage
 
 # PVP 채널 ID 불러오기
 PVP_CHANNEL_ID = int(os.getenv("PVP_CHANNEL_ID", 0))
@@ -124,7 +125,8 @@ class Mage(commands.Cog):
             # 🔹 기본 데미지
             # ======================
 
-            base_damage = 10 + level
+            BASE = 10
+            base_damage = BASE + plus_damage(user_id)
             msg_base = "✅ 성공"
 
             damage_logs = []
