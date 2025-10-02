@@ -9,7 +9,7 @@ import random
 SHOP_ITEMS = [
     {"name": "직업변경권", "price": 200, "desc": "직업을 변경할 수 있는 특별한 권한"},
     {"name": "5천원 상품권", "price": 5000, "desc": "관리자가 직접 지급하는 리워드"},
-    {"name": "경험치 구매권", "price": 100, "desc": "100~300 랜덤 EXP를 획득합니다"}
+    {"name": "경험치 구매권", "price": 100, "desc": "50~100 랜덤 EXP를 획득합니다"}
 ]
 
 
@@ -58,7 +58,7 @@ class ShopSelect(discord.ui.Select):
         sheet.update_cell(self.row_idx, 13, new_gold)  # 13번째 열이 '골드'
 
         if selected_item["name"] == "경험치 구매권":
-            gained_exp = random.randint(100, 300)
+            gained_exp = random.randint(50, 100)
             current_exp = safe_int(self.user_data.get("현재레벨경험치", 0))
             new_exp = current_exp + gained_exp
             sheet.update_cell(self.row_idx, 11, new_exp)
