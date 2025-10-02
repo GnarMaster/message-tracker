@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 import random
 import os
 from utils import get_sheet, safe_int, get_copied_skill, clear_copied_skill, check_counter
+from cogs.rpg.skills.SkillLogic import plus_damage
+
 # PVP 채널 ID 불러오기
 PVP_CHANNEL_ID = int(os.getenv("PVP_CHANNEL_ID", 0))
 
@@ -41,18 +43,19 @@ class Bomb(commands.Cog):
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_sheet.append_row([now_str, user_id, username, skill_name, note])
 
-    def get_bomb_damage(self, level: int):
+    def get_bomb_damage(self, user_id: str):
+        bonus = plus_damage(user_id)
         roll = random.uniform(0, 100)
         if roll <= 70:   # 70%
-            return random.randint(20, 30) + level, "normal"
+            return random.randint(20, 30) + bonus, "normal"
         elif roll <= 90: # 20%
-            return random.randint(45, 60) + level, "medium"
+            return random.randint(45, 60) + bonus, "medium"
         elif roll <= 99: # 9%
             sub_roll = random.uniform(0,100)
             if sub_roll <= 1:
-                return 300 + level, "LEGEND"
+                return 300 + bonus, "LEGEND"
             else: 
-                return random.randint(80, 100) + level, "critical"
+                return random.randint(80, 100) + bonus, "critical"
         else:            # 1% 자폭
             return -40, "self"
 
@@ -138,8 +141,7 @@ class Bomb(commands.Cog):
                 target_id = str(target_data.get("유저 ID"))
 
             target_name = target_data.get("닉네임", f"ID:{target_id}")
-            level = safe_int(user_data.get("레벨",1))
-            damage, dmg_type = self.get_bomb_damage(level)
+            damage, dmg_type = self.get_bomb_damage(user_id)
 
             if dmg_type == "self":
                 # ✅ 자폭은 반격 무시
