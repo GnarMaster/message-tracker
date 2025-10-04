@@ -136,12 +136,14 @@ class Mage(commands.Cog):
             # 🔹 폭뢰술사 (집중 공격)
             # ======================
             if job == "폭뢰술사":
+                target_idx, target_data = target_row  # ✅ 이거 반드시 추가!
+                target_name = target_data.get("닉네임", target.name)
+                targets_info = {target_id: [target_idx, target_data, 0, target]}
                 multiplier = 1
                 hit = True
                 i = 1
-                target_idx, target_data = target_row
-                target_name = target_data.get("닉네임", target.name)
-
+                total_dmg = 0  # 총 피해 합산용
+                
                 while hit and multiplier >= 1/64:
                     dmg = max(1, int(base_damage * multiplier))
                     if random.randint(1, 100) <= 10:
@@ -150,22 +152,35 @@ class Mage(commands.Cog):
                     else:
                         msgX = "✅ 명중!"
 
-                    new_exp = safe_int(target_data.get("현재레벨경험치", 0)) - dmg
-                    sheet.update_cell(target_idx, 11, new_exp)
 
+                    # ✅ 출력 형식 변경
                     if i == 1:
                         damage_logs.append(f"⚡ 집중 {i}타: {target.mention} → {msgX} ({dmg})")
                     else:
                         damage_logs.append(f"⚡ 집중 {i}타: {target_name} → {msgX} ({dmg})")
 
+                    # ✅ 누적 데미지
+                    total_dmg += dmg
+                    targets_info[target_id][2] = total_dmg
+
+                    # ✅ 반격 체크
                     cm = check_counter(user_id, username, target_id, target.mention, dmg)
                     if cm:
                         counter_msgs.append(cm)
 
+                    # 다음 타격 확률 계산
                     if i >= 2:
                         hit = random.random() <= 0.7
                     i += 1
                     multiplier *= 0.7
+
+                # ✅ 공격 종료 후 총합 계산 및 시트 반영
+                current_exp = safe_int(target_data.get("현재레벨경험치", 0))
+                new_exp = current_exp - total_dmg
+                sheet.update_cell(target_idx, 11, new_exp)
+
+                # ✅ 마지막에 총 피해량 출력
+                damage_logs.append(f"💥 총 피해량: {total_dmg}")
 
             # ======================
             # 🔹 연격마도사 (앞 2타 고정, 이후 랜덤)
