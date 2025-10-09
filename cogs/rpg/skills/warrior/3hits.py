@@ -113,11 +113,13 @@ class ThreeHits(commands.Cog):
             #데미지 계산 구간
             BASE = 7 #전사 기본데미지
             def calc_base_damage():
+                base = BASE + plus_damage(user_id)
                 crit_roll = random.randint(1, 100)
                 if crit_roll <= 10:  # 10% 치명타
-                    return BASE + plus_damage(user_id), "🔥 치명타!"
+                    base *= 2
+                    return int(base), "🔥 치명타!"
                 else:
-                    return BASE + plus_damage(user_id), "✅ 명중!"
+                    return int(base), "✅ 명중!"
 
             if job == "검성":
                 chances = [90, 60, 30, 15]
@@ -131,14 +133,14 @@ class ThreeHits(commands.Cog):
                 roll = random.randint(1, 100)
                 if roll <= chance:
                     base, msg = calc_base_damage()
+                    multiplier = 1.0
                     if i == 2:
-                        dmg = int(base * 1.2)
+                        multiplier = 1.2
                     elif i == 3:
-                        dmg = int(base * 1.3)
+                        multiplier = 1.3
                     elif i == 4:
-                        dmg = int(base * 1.5)
-                    else:
-                        dmg = base
+                        multiplier = 1.5
+                    dmg = int(base*multiplier)
                     logs.append(f"{i}타: {msg} ({dmg})")
                     total_damage += dmg
                 else:
