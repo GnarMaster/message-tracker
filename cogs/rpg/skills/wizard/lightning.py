@@ -170,9 +170,9 @@ class Mage(commands.Cog):
 
                     # 다음 타격 확률 계산
                     if i >= 2:
-                        hit = random.random() <= 0.7
+                        hit = random.random() <= 0.5
                     i += 1
-                    multiplier *= 0.7
+                    multiplier *= 0.5
 
                 # ✅ 공격 종료 후 총합 계산 및 시트 반영
                 current_exp = safe_int(target_data.get("현재레벨경험치", 0))
@@ -208,9 +208,9 @@ class Mage(commands.Cog):
                     if cm:
                         counter_msgs.append(cm)
 
-                multiplier = 0.7
+                multiplier = 0.5
                 i = 3
-                while candidates and random.random() < 0.7:
+                while candidates and random.random() < 0.5:
                     base = int(base_damage * multiplier)
                     if base <= 0:
                         break
@@ -233,7 +233,7 @@ class Mage(commands.Cog):
                     if cm:
                         counter_msgs.append(cm)
 
-                    multiplier *= 0.7
+                    multiplier *= 0.5
                     i += 1
 
             # ======================
@@ -277,9 +277,9 @@ class Mage(commands.Cog):
                         if cm:
                             counter_msgs.append(cm)
 
-                        prob = 0.7
+                        prob = 0.5
                         step = 4
-                        while candidates and random.random() < 0.7:
+                        while candidates and random.random() < 0.5:
                             base = base_damage // step
                             if base <= 0:
                                 break
@@ -301,7 +301,7 @@ class Mage(commands.Cog):
                             if cm:
                                 counter_msgs.append(cm)
 
-                            prob *= 0.7
+                            prob *= 0.5
                             step *= 2
 
             # 로그 기록
