@@ -18,13 +18,15 @@ class Menu(commands.Cog):
     async def 점메추(self, interaction: discord.Interaction):
         menu_list = load_menu()
         choice = random.choice(menu_list)
-        await interaction.response.send_message(f"🥢 오늘의 점심 추천은... **{choice}**!")
+        await interaction.response.defer(thinking=True)
+        await interaction.followup.send(f"🥢 오늘의 점심 추천은... **{choice}**!")
 
     @app_commands.command(name="저메추", description="오늘의 저녁 메뉴를 추천해줘요.")
     async def 저메추(self, interaction: discord.Interaction):
         menu_list = load_menu()
         choice = random.choice(menu_list)
-        await interaction.response.send_message(f"🍽️ 오늘의 저녁 추천은... **{choice}**!")
+        await interaction.response.defer(thinking=True)
+        await interaction.followup.send(f"🍽️ 오늘의 저녁 추천은... **{choice}**!")
 
     @app_commands.command(name="메뉴추가", description="메뉴에 새로운 항목을 추가합니다.")
     async def 메뉴추가(self, interaction: discord.Interaction, menu_name: str):
