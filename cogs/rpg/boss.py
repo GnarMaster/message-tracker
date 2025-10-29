@@ -194,16 +194,14 @@ class Boss(commands.Cog):
         logs = []
         total_damage = 0
         header_msg = ""
-        weapon_atk = 0
-        # ✅ 무기 공격력 불러오기
-        
+       
         # ⚔️ 전사
         if job in ["전사", "검성", "투신", "검투사"]:
             header_msg = f"⚔️ {user.name} 님이 보스에게 **삼연격**을 시전했다!"
             chances = [90, 60, 30, 15] if job == "검성" else [90, 45, 15]
             for i, chance in enumerate(chances, start=1):
                 if random.randint(1, 100) <= chance:
-                    dmg = 8+level+weapon_atk
+                    dmg = 8+level
                     if random.randint(1, 100) <= 10:
                         dmg *= 2
                         logs.append(f"{i}타: 🔥 치명타! ({dmg})")
@@ -223,7 +221,7 @@ class Boss(commands.Cog):
         # 🔮 마법사
         elif job in ["마법사", "폭뢰술사", "연격마도사"]:
             header_msg = f"🔮 {user.name} 님의 **체인라이트닝** 발동!"
-            base = 6+level+weapon_atk
+            base = 6+level
             multiplier, hit, i = 1, True, 1
             while hit and multiplier >= 1/64:
                 dmg = max(1, int(base*multiplier))
@@ -245,7 +243,7 @@ class Boss(commands.Cog):
         elif job in ["궁수", "저격수", "연사수"]:
             header_msg = f"🏹 {user.name} 님의 **더블샷** 발동!"
             for i in range(2):
-                base = 10+level+weapon_atk
+                base = 10+level
                 roll = random.randint(1, 100)
                 if roll <= 20:
                     dmg = base*2
@@ -266,19 +264,19 @@ class Boss(commands.Cog):
             header_msg = f"🥷 {user.name} 님이 보스를 **스틸**하였다!"
             roll = random.uniform(0, 100)
             if roll <= 80:
-                dmg = (random.randint(1, 10)+level+weapon_atk)*2
+                dmg = (random.randint(1, 10)+level)*2
             elif roll <= 90:
                 dmg = 0
             elif roll <= 99:
-                dmg = (random.randint(11, 19)+level+weapon_atk)*2
+                dmg = (random.randint(11, 19)+level)*2
             else:
                 jackpot = random.random()
                 if jackpot <= 0.001:
-                    dmg = 200+level+weapon_atk
+                    dmg = 200+level
                 elif jackpot <= 0.005:
-                    dmg = 100+level+weapon_atk
+                    dmg = 100+level
                 else:
-                    dmg = (50+level+weapon_atk)*2
+                    dmg = (50+level)*2
             total_damage += dmg
             logs.append(f"스틸 피해: {dmg}")
             if job == "암살자" and dmg > 0 and random.random() <= 0.3:
@@ -293,17 +291,17 @@ class Boss(commands.Cog):
             header_msg = f"💣 {user.name} 님이 보스에게 **폭탄**을 던졌다!"
             roll = random.uniform(0, 100)
             if roll <= 70:
-                dmg = random.randint(20, 30)+level+weapon_atk
+                dmg = random.randint(20, 30)+level
                 logs.append(f"💣 폭탄 명중 ({dmg})")
             elif roll <= 90:
-                dmg = random.randint(45, 60)+level+weapon_atk
+                dmg = random.randint(45, 60)+level
                 logs.append(f"💥 강력 폭발 ({dmg})")
             elif roll <= 99:
                 if random.uniform(0, 100) <= 1:
-                    dmg = 300+level+weapon_atk
+                    dmg = 300+level
                     logs.append(f"🌋 전설적 폭발 ({dmg})")
                 else:
-                    dmg = random.randint(80, 100)+level+weapon_atk
+                    dmg = random.randint(80, 100)+level
                     logs.append(f"🔥 치명적 폭발 ({dmg})")
             else:
                 dmg = 0
