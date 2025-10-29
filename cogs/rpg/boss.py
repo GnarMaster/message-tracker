@@ -197,7 +197,7 @@ class Boss(commands.Cog):
         weapon_atk = 0
         # ✅ 무기 공격력 불러오기 
         from utils import get_sheet, safe_int
-        sheet = get_sheet()
+        sheet = get_sheet().spreadsheet
         try:
             weapon_ws = sheet.worksheet("Weapon")
             records = weapon_ws.get_all_records()
