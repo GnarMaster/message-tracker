@@ -201,12 +201,11 @@ class Boss(commands.Cog):
         try:
             weapon_ws = sheet.worksheet("Weapon")
             records = weapon_ws.get_all_records()
-            weapon_atk = 0
             for row in records:
-                if str(row.get("유저 ID", "")) == str(user_id):
+                if str(row.get("유저 ID", "")) == str(user.id):
                     weapon_atk = safe_int(row.get("무기공격력", 0))
                     break
-         except:
+        except:
             weapon_atk = 0
 
         # ⚔️ 전사
