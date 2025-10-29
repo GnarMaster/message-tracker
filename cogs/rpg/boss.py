@@ -195,19 +195,8 @@ class Boss(commands.Cog):
         total_damage = 0
         header_msg = ""
         weapon_atk = 0
-        # ✅ 무기 공격력 불러오기 
-        from utils import get_sheet, safe_int
-        sheet = get_sheet().spreadsheet
-        try:
-            weapon_ws = sheet.worksheet("Weapon")
-            records = weapon_ws.get_all_records()
-            for row in records:
-                if str(row.get("유저 ID", "")) == str(user.id):
-                    weapon_atk = safe_int(row.get("무기공격력", 0))
-                    break
-        except:
-            weapon_atk = 0
-
+        # ✅ 무기 공격력 불러오기
+        
         # ⚔️ 전사
         if job in ["전사", "검성", "투신", "검투사"]:
             header_msg = f"⚔️ {user.name} 님이 보스에게 **삼연격**을 시전했다!"
