@@ -320,7 +320,7 @@ async def sync_cache_to_sheet():
                     new_inlevel_exp -= need
                     new_level += 1
                     await bot.get_channel(CHANNEL_ID).send(
-                        f"🎉 {user.name} 님이 **레벨 {new_level}** 달성!"
+                        f"🎉 {user_obj.name} 님이 **레벨 {new_level}** 달성!"
                     )
 
                     if new_level == 5:
