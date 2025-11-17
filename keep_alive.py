@@ -112,6 +112,32 @@ def callback():
 
     return redirect(frontend_url)
 
+@app.route('/api/userinfo')
+def api_userinfo():
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+
+    sheet = get_sheet()
+    records = sheet.get_all_records()
+
+    # 해당 유저 데이터 찾기
+    for row in records:
+        if str(row.get("유저 ID", "")).strip() == str(user_id):
+            level = safe_int(row.get("레벨", 1))
+            exp = safe_int(row.get("현재레벨경험치", 0))
+            job = row.get("직업", "무직")
+            next_exp = safe_int(row.get("다음레벨경험치", 0))
+
+            return jsonify({
+                "user_id": user_id,
+                "job": job,
+                "level": level,
+                "exp": exp,
+                "next_exp": next_exp
+            })
+
+    return jsonify({"error": "user not found"}), 404
 
 # ======================================
 # Render 서버 실행
