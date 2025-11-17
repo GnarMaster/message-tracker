@@ -4,7 +4,20 @@ from threading import Thread
 from utils import get_sheet, safe_int
 import os
 import requests
-from main import exp_needed_for_next_level
+
+def exp_needed_for_next_level(level: int) -> int:
+    if level < 5:
+        return int(0.5 * (level ** 2) + level*11)
+    elif level < 10:
+        return int(0.7 * (level ** 2) + 70)
+    elif level < 20:
+        return int(1.2 * (level ** 2) + 150)
+    elif level < 30:
+        return int(1.5 * (level ** 2) + 200)
+    elif level < 50:
+        return int(1.2 * (level ** 2) + 500)
+    else:
+        return int(5 * (level ** 2) + level * 20 + 1000)
 
 app = Flask('')
 CORS(app)
@@ -128,7 +141,9 @@ def api_userinfo():
             level = safe_int(row.get("레벨", 1))
             exp = safe_int(row.get("현재레벨경험치", 0))
             job = row.get("직업", "무직")
+            
             next_exp = exp_needed_for_next_level(level)
+            
             return jsonify({
                 "user_id": user_id,
                 "job": job,
