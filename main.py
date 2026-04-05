@@ -319,15 +319,8 @@ async def sync_cache_to_sheet():
                     need = exp_needed_for_next_level(new_level)
                     new_inlevel_exp -= need
                     new_level += 1
-                    await bot.get_channel(CHANNEL_ID).send(
-                        f"🎉 {user_obj.name} 님이 **레벨 {new_level}** 달성!"
-                    )
 
-                    if new_level == 5:
-                        await bot.get_channel(CHANNEL_ID).send(
-                            f"⚔️이제 `/전직` 명령어를 이용해 전직할 수 있어요!"
-                        )
-
+                
                 update_data.extend([
                     {"range": f"C{row_num}", "values": [[new_total_messages]]},
                     {"range": f"D{row_num}", "values": [[new_mentions]]},
